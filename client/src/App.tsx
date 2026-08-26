@@ -1,55 +1,147 @@
-import { useState } from "react";
-import { checkSystem, Category } from "./api.js";
+import React, { useState } from "react";
+import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
+import RequesterSelector from "./components/RequesterSelector.js";
 
-// UI states you must handle for Issue 4: idle, loading, success, error.
-type UiState = "idle" | "loading" | "success" | "error";
+type Tab = "my-tickets" | "create-ticket";
 
-export default function App() {
-  const [state, setState] = useState<UiState>("idle");
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [errorMsg, setErrorMsg] = useState("");
+function MainAppShell() {
+  const { requester, clearRequester } = useRequester();
+  const [activeTab, setActiveTab] = useState<Tab>("my-tickets");
 
-  async function handleCheck() {
-    setState("loading");
-    try {
-      const result = await checkSystem();
-      setCategories(result.categories);
-      setState("success");
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Unknown error");
-      setState("error");
-    }
+  if (!requester) {
+    return <RequesterSelector />;
   }
 
+  // Get initials for user avatar
+  const initials = requester.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+
   return (
-    <div className="container py-5" style={{ maxWidth: 640 }}>
-      <h1 className="h3 mb-4">
-        TokTickIT <span className="text-success">IT Service Desk</span>
-      </h1>
+    <div className="min-vh-100 d-flex flex-column">
+      {/* Zen Green Top Header */}
+      <header className="app-header">
+        <div className="d-flex align-items-center gap-4">
+          <div className="brand-title" onClick={() => setActiveTab("my-tickets")}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>TokTickIT</span>
+          </div>
 
-      <button className="btn btn-success" onClick={handleCheck} disabled={state === "loading"}>
-        {state === "loading" ? "Loading…" : "Check System"}
-      </button>
-
-      {state === "loading" && <p className="mt-3">Checking system…</p>}
-
-      {state === "success" && (
-        <div className="mt-3">
-          <p className="text-success fw-bold">Online</p>
-          <ul>
-            {categories.map((c) => (
-              <li key={c.id}>{c.name}</li>
-            ))}
-          </ul>
+          <nav>
+            <ul className="nav-tabs-custom">
+              <li>
+                <button
+                  type="button"
+                  className={`nav-tab-item border-0 bg-transparent ${activeTab === "my-tickets" ? "active" : ""}`}
+                  onClick={() => setActiveTab("my-tickets")}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                  My Tickets
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className={`nav-tab-item border-0 bg-transparent ${activeTab === "create-ticket" ? "active" : ""}`}
+                  onClick={() => setActiveTab("create-ticket")}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Create Ticket
+                </button>
+              </li>
+            </ul>
+          </nav>
         </div>
-      )}
 
-      {state === "error" && (
-        <div className="mt-3">
-          <p className="text-danger fw-bold">Offline</p>
-          <p className="text-danger">{errorMsg}</p>
+        {/* User Identity Widget */}
+        <div className="user-profile-widget">
+          <div className="d-flex align-items-center gap-2">
+            <div className="user-avatar-badge">{initials}</div>
+            <span className="fw-semibold small d-none d-sm-inline">{requester.name}</span>
+          </div>
+          <button
+            type="button"
+            className="btn-change-requester"
+            onClick={clearRequester}
+            title="Switch Development Requester"
+          >
+            Change Requester
+          </button>
         </div>
-      )}
+      </header>
+
+      {/* Main Content Area */}
+      <main className="container-fluid py-4 px-3 px-md-5 flex-grow-1">
+        {activeTab === "my-tickets" && (
+          <div className="zen-card">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <div>
+                <h1 className="h4 fw-bold mb-1" style={{ color: "var(--color-text-primary)" }}>
+                  My Tickets
+                </h1>
+                <p className="text-muted small mb-0">View and track all of your support requests.</p>
+              </div>
+              <button
+                className="btn-zen-primary"
+                onClick={() => setActiveTab("create-ticket")}
+              >
+                + Create Ticket
+              </button>
+            </div>
+            <div className="text-center py-5">
+              <p className="text-muted">
+                Logged in as <strong>{requester.name}</strong> ({requester.email}).
+              </p>
+              <p className="text-muted small">
+                Ticket creation, dashboard filtering, and ticket details will be loaded here.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "create-ticket" && (
+          <div className="zen-card" style={{ maxWidth: 800, margin: "0 auto" }}>
+            <div className="mb-4">
+              <h1 className="h4 fw-bold mb-1" style={{ color: "var(--color-text-primary)" }}>
+                Create Ticket
+              </h1>
+              <p className="text-muted small mb-0">Submit a new IT support request.</p>
+            </div>
+            <div className="text-center py-5">
+              <p className="text-muted">
+                Requester: <strong>{requester.name}</strong> ({requester.email})
+              </p>
+              <button
+                className="btn-zen-secondary"
+                onClick={() => setActiveTab("my-tickets")}
+              >
+                ← Back to My Tickets
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <RequesterProvider>
+      <MainAppShell />
+    </RequesterProvider>
   );
 }
