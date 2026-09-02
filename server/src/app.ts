@@ -154,6 +154,7 @@ app.post("/api/tickets", upload.array("attachments", 5), async (req: Request, re
 
     res.status(201).json(ticket);
   } catch (error) {
+    console.error("Failed to create ticket error:", error);
     res.status(500).json({ error: "Failed to create ticket" });
   }
 });

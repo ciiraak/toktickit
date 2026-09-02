@@ -2,8 +2,8 @@ import { jsx as _jsx } from "react/jsx-runtime";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../../src/App.js";
-import * as api from "../../src/api.js";
+import App from "../../src/App";
+import * as api from "../../src/api";
 describe("Lab 2 - Requester Selection and Context", () => {
     const mockRequesters = [
         { id: 1, name: "Jennifer Anderson", email: "jennifer.anderson@kmutt.ac.th" },

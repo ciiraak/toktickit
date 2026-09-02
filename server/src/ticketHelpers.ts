@@ -18,9 +18,29 @@ const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
  */
 export async function generateTicketNumber(prisma: PrismaClient): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.ticket.count();
-  const sequence = String(count + 1).padStart(6, "0");
-  return `TKT-${year}-${sequence}`;
+  const prefix = `TKT-${year}-`;
+  const latestTicket = await prisma.ticket.findFirst({
+    where: { ticketNumber: { startsWith: prefix } },
+    orderBy: { ticketNumber: "desc" },
+  });
+
+  let nextSeq = 1;
+  if (latestTicket) {
+    const parts = latestTicket.ticketNumber.split("-");
+    const num = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(num)) {
+      nextSeq = num + 1;
+    }
+  }
+
+  while (true) {
+    const candidate = `${prefix}${String(nextSeq).padStart(6, "0")}`;
+    const exists = await prisma.ticket.findUnique({ where: { ticketNumber: candidate } });
+    if (!exists) {
+      return candidate;
+    }
+    nextSeq++;
+  }
 }
 
 /**
