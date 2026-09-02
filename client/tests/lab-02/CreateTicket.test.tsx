@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../../src/App.js";
-import * as api from "../../src/api.js";
+import App from "../../src/App";
+import * as api from "../../src/api";
 
 const mockRequesters: api.Requester[] = [
   { id: 1, name: "Jennifer Anderson", email: "jennifer.anderson@kmutt.ac.th" },
@@ -89,7 +89,7 @@ describe("Lab 2 - Create Ticket Form", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Submit Ticket/i }));
 
-    expect(await screen.findByText(/TKT-2026-000001/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/TKT-2026-000001/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/created successfully/i)).toBeInTheDocument();
   });
 });

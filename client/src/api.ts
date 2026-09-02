@@ -104,3 +104,67 @@ export async function createTicket(
   return res.json();
 }
 
+export interface TicketListItem {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  requestedPriority: string;
+  currentStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  category: { name: string };
+  relatedSystem: { name: string };
+}
+
+export interface PaginationMeta {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface TicketListResponse {
+  tickets: TicketListItem[];
+  pagination: PaginationMeta;
+}
+
+export interface TicketQueryParams {
+  search?: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: string;
+  page?: number;
+  limit?: number;
+}
+
+export async function fetchMyTickets(
+  requesterId: number,
+  params?: TicketQueryParams
+): Promise<TicketListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.append("search", params.search);
+  if (params?.category) query.append("category", params.category);
+  if (params?.priority) query.append("priority", params.priority);
+  if (params?.status) query.append("status", params.status);
+  if (params?.sortBy) query.append("sortBy", params.sortBy);
+  if (params?.sortOrder) query.append("sortOrder", params.sortOrder);
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.limit) query.append("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  const res = await fetch(`${API_URL}/api/tickets${queryString}`, {
+    headers: { "x-requester-id": String(requesterId) },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Failed to fetch tickets" }));
+    throw new Error(body.error ?? "Failed to fetch tickets");
+  }
+  return res.json();
+}
+
+

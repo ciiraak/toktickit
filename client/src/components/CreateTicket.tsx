@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useRequester } from "../context/RequesterContext";
 import {
   fetchCategories,
   fetchSystems,
@@ -7,7 +7,7 @@ import {
   Category,
   RelatedSystem,
   CreatedTicket,
-} from "../api.js";
+} from "../api";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;

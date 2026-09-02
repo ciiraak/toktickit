@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useRequester } from "../context/RequesterContext";
 
 export default function RequesterSelector() {
   const { requesters, loading, error, setRequesterId, reloadRequesters } = useRequester();
