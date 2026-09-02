@@ -1,12 +1,21 @@
 import React, { useState } from "react";
 import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
 import RequesterSelector from "./components/RequesterSelector.js";
+import CreateTicket from "./components/CreateTicket.js";
+import { CreatedTicket } from "./api.js";
 
 type Tab = "my-tickets" | "create-ticket";
 
 function MainAppShell() {
   const { requester, clearRequester } = useRequester();
   const [activeTab, setActiveTab] = useState<Tab>("my-tickets");
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
+
+  function handleTicketCreated(ticket: CreatedTicket) {
+    setSuccessBanner(`Ticket ${ticket.ticketNumber} created successfully!`);
+    setActiveTab("my-tickets");
+    setTimeout(() => setSuccessBanner(null), 6000);
+  }
 
   if (!requester) {
     return <RequesterSelector />;
@@ -101,37 +110,26 @@ function MainAppShell() {
                 + Create Ticket
               </button>
             </div>
+            {successBanner && (
+              <div className="zen-banner-info mb-3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>{successBanner}</span>
+              </div>
+            )}
             <div className="text-center py-5">
               <p className="text-muted">
                 Logged in as <strong>{requester.name}</strong> ({requester.email}).
               </p>
               <p className="text-muted small">
-                Ticket creation, dashboard filtering, and ticket details will be loaded here.
+                Ticket listing, filtering, and details will be loaded here in the next feature.
               </p>
             </div>
           </div>
+
         )}
 
         {activeTab === "create-ticket" && (
-          <div className="zen-card" style={{ maxWidth: 800, margin: "0 auto" }}>
-            <div className="mb-4">
-              <h1 className="h4 fw-bold mb-1" style={{ color: "var(--color-text-primary)" }}>
-                Create Ticket
-              </h1>
-              <p className="text-muted small mb-0">Submit a new IT support request.</p>
-            </div>
-            <div className="text-center py-5">
-              <p className="text-muted">
-                Requester: <strong>{requester.name}</strong> ({requester.email})
-              </p>
-              <button
-                className="btn-zen-secondary"
-                onClick={() => setActiveTab("my-tickets")}
-              >
-                ← Back to My Tickets
-              </button>
-            </div>
-          </div>
+          <CreateTicket onSuccess={handleTicketCreated} />
         )}
       </main>
     </div>

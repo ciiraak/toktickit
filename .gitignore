@@ -12,3 +12,9 @@ server/prisma/*.db
 # logs & OS
 *.log
 .DS_Store
+# uploaded files (keep folder, ignore contents)
+server/uploads/*
+!server/uploads/.gitkeep
+client/src/**/*.js
+client/src/*.js
+
