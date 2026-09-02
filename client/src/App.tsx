@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
-import RequesterSelector from "./components/RequesterSelector.js";
-import CreateTicket from "./components/CreateTicket.js";
-import { CreatedTicket } from "./api.js";
+import { RequesterProvider, useRequester } from "./context/RequesterContext";
+import RequesterSelector from "./components/RequesterSelector";
+import MyTickets from "./components/MyTickets";
+import CreateTicket from "./components/CreateTicket";
+import { CreatedTicket } from "./api";
 
 type Tab = "my-tickets" | "create-ticket";
 
@@ -95,37 +96,15 @@ function MainAppShell() {
       {/* Main Content Area */}
       <main className="container-fluid py-4 px-3 px-md-5 flex-grow-1">
         {activeTab === "my-tickets" && (
-          <div className="zen-card">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <div>
-                <h1 className="h4 fw-bold mb-1" style={{ color: "var(--color-text-primary)" }}>
-                  My Tickets
-                </h1>
-                <p className="text-muted small mb-0">View and track all of your support requests.</p>
-              </div>
-              <button
-                className="btn-zen-primary"
-                onClick={() => setActiveTab("create-ticket")}
-              >
-                + Create Ticket
-              </button>
-            </div>
+          <div>
             {successBanner && (
               <div className="zen-banner-info mb-3">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 <span>{successBanner}</span>
               </div>
             )}
-            <div className="text-center py-5">
-              <p className="text-muted">
-                Logged in as <strong>{requester.name}</strong> ({requester.email}).
-              </p>
-              <p className="text-muted small">
-                Ticket listing, filtering, and details will be loaded here in the next feature.
-              </p>
-            </div>
+            <MyTickets onCreateTicketClick={() => setActiveTab("create-ticket")} />
           </div>
-
         )}
 
         {activeTab === "create-ticket" && (

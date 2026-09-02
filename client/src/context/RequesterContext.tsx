@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Requester, fetchRequesters } from "../api.js";
+import { Requester, fetchRequesters } from "../api";
 
 const STORAGE_KEY = "toktickit_requester_id";
 

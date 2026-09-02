@@ -158,4 +158,104 @@ app.post("/api/tickets", upload.array("attachments", 5), async (req: Request, re
   }
 });
 
+app.get("/api/tickets", async (req: Request, res: Response) => {
+  const requesterId = parseInt(req.headers["x-requester-id"] as string);
+  if (!requesterId || isNaN(requesterId)) {
+    res.status(401).json({ error: "Missing x-requester-id header" });
+    return;
+  }
+
+  const prisma = getPrisma();
+  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
+  if (!requester || !requester.isActive) {
+    res.status(403).json({ error: "Requester not found or inactive" });
+    return;
+  }
+
+  try {
+    const {
+      search,
+      category,
+      priority,
+      status,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit as string) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build Prisma query filters
+    const where: any = { requesterId };
+
+    if (category) {
+      const catId = parseInt(category as string);
+      if (!isNaN(catId)) where.categoryId = catId;
+    }
+
+    if (priority && typeof priority === "string") {
+      where.requestedPriority = priority.toUpperCase();
+    }
+
+    if (status && typeof status === "string") {
+      where.currentStatus = status;
+    }
+
+    if (search && typeof search === "string" && search.trim()) {
+      const term = search.trim();
+      where.OR = [
+        { ticketNumber: { contains: term, mode: "insensitive" } },
+        { summary: { contains: term, mode: "insensitive" } },
+      ];
+    }
+
+    // Build sort order
+    const validSortFields = ["createdAt", "ticketNumber", "updatedAt"];
+    const sortField = validSortFields.includes(sortBy as string) ? (sortBy as string) : "createdAt";
+    const order = (sortOrder as string).toLowerCase() === "asc" ? "asc" : "desc";
+    const orderBy = { [sortField]: order };
+
+    const [totalItems, tickets] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limitNum,
+        select: {
+          id: true,
+          ticketNumber: true,
+          summary: true,
+          requestedPriority: true,
+          currentStatus: true,
+          createdAt: true,
+          updatedAt: true,
+          category: { select: { name: true } },
+          relatedSystem: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limitNum) || 1;
+
+    res.status(200).json({
+      tickets,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: pageNum,
+        limit: limitNum,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch tickets" });
+  }
+});
+
 export default app;
+
