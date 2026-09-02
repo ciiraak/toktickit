@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../../src/App.js";
-import * as api from "../../src/api.js";
+import SystemChecker from "../../src/SystemChecker";
+import * as api from "../../src/api";
 
 describe("App", () => {
   // WORKED EXAMPLE — provided for you.
   it("renders the TokTickIT heading", () => {
-    render(<App />);
+    render(<SystemChecker />);
     expect(screen.getByText(/TokTickIT/i)).toBeInTheDocument();
   });
 
@@ -20,7 +20,7 @@ describe("App", () => {
       ],
     });
 
-    render(<App />);
+    render(<SystemChecker />);
     await userEvent.click(screen.getByRole("button", { name: /check system/i }));
 
     expect(await screen.findByText("Online")).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe("App", () => {
   it("shows an Offline error message when the API is unavailable", async () => {
     vi.spyOn(api, "checkSystem").mockRejectedValue(new Error("Network error"));
 
-    render(<App />);
+    render(<SystemChecker />);
     await userEvent.click(screen.getByRole("button", { name: /check system/i }));
 
     expect(await screen.findByText("Offline")).toBeInTheDocument();
