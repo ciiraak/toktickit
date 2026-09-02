@@ -55,3 +55,52 @@ export async function fetchSystems(): Promise<RelatedSystem[]> {
   }
   return res.json();
 }
+
+export interface CreatedTicket {
+  id: number;
+  ticketNumber: string;
+  currentStatus: string;
+  requestedPriority: string;
+  summary: string;
+  description: string;
+  createdAt: string;
+  category: { id: number; name: string };
+  relatedSystem: { id: number; name: string };
+  attachments: { id: number; filename: string; fileSize: number; mimeType: string }[];
+}
+
+export async function createTicket(
+  requesterId: number,
+  data: {
+    summary: string;
+    description: string;
+    categoryId: number;
+    relatedSystemId: number;
+    requestedPriority: string;
+    attachments: File[];
+  }
+): Promise<CreatedTicket> {
+  const formData = new FormData();
+  formData.append("summary", data.summary);
+  formData.append("description", data.description);
+  formData.append("categoryId", String(data.categoryId));
+  formData.append("relatedSystemId", String(data.relatedSystemId));
+  formData.append("requestedPriority", data.requestedPriority);
+  for (const file of data.attachments) {
+    formData.append("attachments", file);
+  }
+
+  const res = await fetch(`${API_URL}/api/tickets`, {
+    method: "POST",
+    headers: { "x-requester-id": String(requesterId) },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Request failed" }));
+    const details = body.details ? ` ${(body.details as string[]).join(" ")}` : "";
+    throw new Error(`${body.error}${details}`);
+  }
+  return res.json();
+}
+
