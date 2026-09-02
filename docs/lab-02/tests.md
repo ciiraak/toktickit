@@ -95,7 +95,90 @@ npx playwright test
 
 ## 6. Final Results
 
-*(Test results will be pasted here upon running the test suites).*
+### 6.1. Server Tests — 29/29 PASSED ✅
+
+```
+ ✓ tests/lab-02/helpers.test.ts > UNIT-01: generateTicketNumber > returns ticket number formatted as TKT-YYYY-XXXXXX
+ ✓ tests/lab-02/helpers.test.ts > UNIT-01: generateTicketNumber > pads sequence correctly for 5th ticket
+ ✓ tests/lab-02/helpers.test.ts > UNIT-02: validateAttachmentFile > accepts valid file types under 5MB
+ ✓ tests/lab-02/helpers.test.ts > UNIT-02: validateAttachmentFile > rejects unsupported MIME types
+ ✓ tests/lab-02/helpers.test.ts > UNIT-02: validateAttachmentFile > rejects files exceeding 5 MB
+ ✓ tests/lab-02/helpers.test.ts > validateTicketFields > returns empty array for valid fields
+ ✓ tests/lab-02/helpers.test.ts > validateTicketFields > returns error list for invalid fields
+ ✓ tests/lab-01/health.test.ts > GET /api/health > returns 200 with status ok and the service name
+ ✓ tests/lab-02/my-tickets.api.test.ts > returns 401 when x-requester-id header is missing
+ ✓ tests/lab-02/my-tickets.api.test.ts > returns 403 when requester is inactive
+ ✓ tests/lab-02/ticket-detail.api.test.ts > returns 401 when x-requester-id header is missing
+ ✓ tests/lab-02/ticket-detail.api.test.ts > returns 403 when requester is inactive
+ ✓ tests/lab-02/create-ticket.api.test.ts > returns 401 when x-requester-id header is missing
+ ✓ tests/lab-02/create-ticket.api.test.ts > returns 403 when requester is inactive (BR-04, BR-11)
+ ✓ tests/lab-02/create-ticket.api.test.ts > returns 400 when summary is shorter than 10 characters (BR-05)
+ ✓ tests/lab-02/create-ticket.api.test.ts > returns 400 when description is shorter than 20 characters (BR-05)
+ ✓ tests/lab-02/create-ticket.api.test.ts > returns 400 when attachment has invalid file type (BR-06)
+ ✓ tests/lab-02/create-ticket.api.test.ts > returns 201 and ticket number when all fields are valid (AC-01, BR-01, BR-02)
+ ✓ tests/lab-01/categories.test.ts > returns the four seeded categories in id order
+ ✓ tests/lab-02/requesters.api.test.ts > GET /api/requesters > returns 200 and only active development requesters
+ ✓ tests/lab-02/requesters.api.test.ts > GET /api/systems > returns 200 and all 7 active related systems
+ ✓ tests/lab-02/attachments.api.test.ts > POST returns 401 when x-requester-id header is missing
+ ✓ tests/lab-02/attachments.api.test.ts > GET returns 401 when x-requester-id header is missing
+ ✓ tests/lab-02/attachments.api.test.ts > DELETE returns 401 when x-requester-id header is missing
+ ✓ tests/lab-02/attachments.api.test.ts > DELETE returns 400 when deletionReason is too short (BR-09)
+ ✓ tests/lab-02/attachments.api.test.ts > API-05 — returns 400 when trying to add a 6th active attachment (BR-08)
+ ✓ tests/lab-02/attachments.api.test.ts > API-06 — returns 200 and sets deletedAt when soft-removing (BR-09)
+ ✓ tests/lab-02/attachments.api.test.ts > API-06 — returns 410 Gone when downloading soft-removed attachment (BR-10)
+ ✓ tests/lab-02/attachments.api.test.ts > API-06 — returns 409 Conflict when soft-removing already-removed attachment
+
+ Test Files  8 passed (8)
+      Tests  29 passed (29)
+```
+
+### 6.2. Client Tests — 19/19 PASSED ✅
+
+```
+ ✓ tests/lab-01/App.test.tsx > renders the TokTickIT heading
+ ✓ tests/lab-01/App.test.tsx > shows Online and the seeded categories on success
+ ✓ tests/lab-01/App.test.tsx > shows an Offline error message when the API is unavailable
+ ✓ tests/lab-02/RequesterSelector.test.tsx > renders the Development Requester Selection screen
+ ✓ tests/lab-02/RequesterSelector.test.tsx > populates active requesters in the dropdown
+ ✓ tests/lab-02/RequesterSelector.test.tsx > selecting a requester and clicking Continue loads the app shell
+ ✓ tests/lab-02/RequesterSelector.test.tsx > clicking Change Requester returns to the selection screen
+ ✓ tests/lab-02/CreateTicket.test.tsx > shows Create Ticket form with read-only requester field
+ ✓ tests/lab-02/CreateTicket.test.tsx > shows inline validation errors when submitting empty form
+ ✓ tests/lab-02/CreateTicket.test.tsx > shows error when summary is too short
+ ✓ tests/lab-02/CreateTicket.test.tsx > shows success screen with ticket number after valid submission
+ ✓ tests/lab-02/MyTickets.test.tsx > renders empty state card when user has no tickets
+ ✓ tests/lab-02/MyTickets.test.tsx > renders ticket list table with tickets and badges when populated
+ ✓ tests/lab-02/MyTickets.test.tsx > renders search input and category/priority/status filter dropdowns
+ ✓ tests/lab-02/MyTickets.test.tsx > shows no matching tickets state when filter returns zero results
+ ✓ tests/lab-02/RequesterTicketDetail.test.tsx > renders ticket details metadata in read-only mode
+ ✓ tests/lab-02/RequesterTicketDetail.test.tsx > displays active attachments with download and remove options
+ ✓ tests/lab-02/RequesterTicketDetail.test.tsx > displays soft-removed attachments with Removed badge and reason
+ ✓ tests/lab-02/RequesterTicketDetail.test.tsx > opens soft removal modal and submits removal reason
+
+ Test Files  5 passed (5)
+      Tests  19 passed (19)
+```
+
+### 6.3. End-to-End (Playwright) Tests — 7/7 PASSED ✅
+
+```
+ ✓ E2E-01 > shows requester selector when no requester is in localStorage (AC-02)
+ ✓ E2E-01 > completes full ticket creation and shows unique ticket number (AC-01, BR-01, BR-02)
+ ✓ E2E-02 > search input shows no-results state for unmatched query (AC-04)
+ ✓ E2E-02 > search input shows results when query matches a ticket summary (AC-04)
+ ✓ E2E-02 > status filter dropdown updates the displayed list (AC-04)
+ ✓ E2E-03 > uploads a file to a ticket and soft-removes it with a mandatory reason (AC-06)
+ ✓ E2E-04 > API returns 403 Forbidden when accessing another requester's ticket (AC-03, BR-04)
+
+ 7 passed (13.6s)
+```
+
+### 6.4. Build Verification
+
+| Check | Result |
+| :--- | :--- |
+| `cd server && npx tsc --noEmit` | 0 errors ✅ |
+| `cd client && npx tsc --noEmit` | 0 errors ✅ |
 
 ---
 

@@ -6,7 +6,8 @@ describe("Lab 2 - Ticket Helper Unit Tests", () => {
     it("returns ticket number formatted as TKT-YYYY-XXXXXX", async () => {
       const mockPrisma = {
         ticket: {
-          count: vi.fn().mockResolvedValue(0),
+          findFirst: vi.fn().mockResolvedValue(null),
+          findUnique: vi.fn().mockResolvedValue(null),
         },
       } as any;
 
@@ -16,14 +17,15 @@ describe("Lab 2 - Ticket Helper Unit Tests", () => {
     });
 
     it("pads sequence correctly for 5th ticket", async () => {
+      const year = new Date().getFullYear();
       const mockPrisma = {
         ticket: {
-          count: vi.fn().mockResolvedValue(4),
+          findFirst: vi.fn().mockResolvedValue({ ticketNumber: `TKT-${year}-000004` }),
+          findUnique: vi.fn().mockResolvedValue(null),
         },
       } as any;
 
       const number = await generateTicketNumber(mockPrisma);
-      const year = new Date().getFullYear();
       expect(number).toBe(`TKT-${year}-000005`);
     });
   });

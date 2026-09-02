@@ -17,8 +17,17 @@ async function selectRequester(page: Page, name: string) {
   // Wait for selector heading to confirm we're on the selector screen
   await page.waitForSelector("h2:has-text('Select Development Requester')", { timeout: 15000 });
 
-  // Find and select the requester option whose text starts with the name
-  await page.locator("#requester-select").selectOption({ label: new RegExp(name) });
+  // Find and select the requester option matching the name
+  const options = await page.locator("#requester-select option").all();
+  let selectedValue = "1";
+  for (const opt of options) {
+    const text = await opt.textContent();
+    if (text && text.includes(name)) {
+      selectedValue = (await opt.getAttribute("value")) || "1";
+      break;
+    }
+  }
+  await page.locator("#requester-select").selectOption(selectedValue);
 
   // Click the "Continue →" button
   await page.click("button:has-text('Continue')");
@@ -38,25 +47,28 @@ async function createTicketViaUI(
   await page.click("button:has-text('Create Ticket')");
   await page.waitForSelector("form", { timeout: 8000 });
 
-  await page.locator("#summary").fill(opts.summary);
-  await page.locator("#description").fill(opts.description);
+  await page.locator("#summary-input").fill(opts.summary);
+  await page.locator("#description-input").fill(opts.description);
 
-  // Select the first non-placeholder option for category and system
-  const categorySelect = page.locator("#categoryId");
-  await categorySelect.selectOption({ index: 1 });
+  // Wait for options and select explicitly
+  await page.locator("#category-select option:not([value=''])").first().waitFor({ state: "attached", timeout: 10000 });
+  const catVal = await page.locator("#category-select option:not([value=''])").first().getAttribute("value");
+  if (catVal) await page.locator("#category-select").selectOption(catVal);
 
-  const systemSelect = page.locator("#relatedSystemId");
-  await systemSelect.selectOption({ index: 1 });
+  await page.locator("#system-select option:not([value=''])").first().waitFor({ state: "attached", timeout: 10000 });
+  const sysVal = await page.locator("#system-select option:not([value=''])").first().getAttribute("value");
+  if (sysVal) await page.locator("#system-select").selectOption(sysVal);
 
   // Submit the form
-  await page.click("button[type='submit']");
+  await page.click("button:has-text('Submit Ticket')");
 
-  // Wait for success content — shows the TKT-YYYY-XXXXXX number
+  // Wait for ticket number in success banner or card
   await page.waitForSelector("text=/TKT-\\d{4}-\\d{6}/", { timeout: 20000 });
 
   const el = page.locator("text=/TKT-\\d{4}-\\d{6}/").first();
-  const ticketNumber = await el.textContent();
-  return ticketNumber?.trim() ?? "";
+  const rawText = await el.textContent();
+  const match = rawText?.match(/TKT-\d{4}-\d{6}/);
+  return match ? match[0] : "";
 }
 
 // ─── E2E-01: Full ticket submission flow ──────────────────────────────────────
@@ -143,8 +155,7 @@ test.describe("E2E-02 — Ticket Search, Filter, and Pagination (AC-04)", () => 
   });
 
   test("status filter dropdown updates the displayed list", async ({ page }) => {
-    // Try to locate a status filter dropdown
-    const statusSelect = page.locator("select").nth(1); // categories is first, status may be later
+    const statusSelect = page.locator("select[aria-label='Filter by Status']");
     if ((await statusSelect.count()) > 0) {
       await statusSelect.selectOption("New");
       await page.waitForTimeout(1000);
@@ -170,16 +181,12 @@ test.describe("E2E-03 — Attachment Upload and Soft Removal (AC-06)", () => {
       description: "This ticket tests uploading and then soft-removing a file attachment via the UI.",
     });
 
-    // Navigate to My Tickets
-    await page.click("button:has-text('My Tickets')");
-    await page.waitForTimeout(1500);
-
-    // Click the ticket row to open details
+    // Open details by clicking the ticket row or card
     await page.waitForSelector(`text=${ticketNumber}`, { timeout: 10000 });
-    await page.locator(`text=${ticketNumber}`).first().click();
+    await page.locator(`tr:has-text('${ticketNumber}'), .d-md-none:has-text('${ticketNumber}')`).first().click({ force: true });
 
-    // Should be on the detail page
-    await page.waitForSelector("text=Attachments", { timeout: 10000 });
+    // Should be on the detail page (wait for Attachments card heading)
+    await page.waitForSelector("h2:has-text('Attachments')", { timeout: 20000 });
 
     // Upload a PDF file via the file input button
     const fileChooserPromise = page.waitForEvent("filechooser");

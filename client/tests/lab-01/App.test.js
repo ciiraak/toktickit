@@ -2,8 +2,8 @@ import { jsx as _jsx } from "react/jsx-runtime";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import SystemChecker from "../../src/SystemChecker.js";
-import * as api from "../../src/api.js";
+import SystemChecker from "../../src/SystemChecker";
+import * as api from "../../src/api";
 describe("App", () => {
     // WORKED EXAMPLE — provided for you.
     it("renders the TokTickIT heading", () => {
