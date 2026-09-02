@@ -257,5 +257,253 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
   }
 });
 
+app.get("/api/tickets/:id", async (req: Request, res: Response) => {
+  const requesterId = parseInt(req.headers["x-requester-id"] as string);
+  if (!requesterId || isNaN(requesterId)) {
+    res.status(401).json({ error: "Missing x-requester-id header" });
+    return;
+  }
+
+  const prisma = getPrisma();
+  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
+  if (!requester || !requester.isActive) {
+    res.status(403).json({ error: "Requester not found or inactive" });
+    return;
+  }
+
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  try {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        requester: { select: { id: true, name: true, email: true } },
+        category: { select: { id: true, name: true } },
+        relatedSystem: { select: { id: true, name: true } },
+        attachments: {
+          select: {
+            id: true,
+            filename: true,
+            fileSize: true,
+            mimeType: true,
+            createdAt: true,
+            deletedAt: true,
+            deletionReason: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    if (ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: "Access denied: ticket belongs to another requester" });
+      return;
+    }
+
+    res.status(200).json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch ticket detail" });
+  }
+});
+
+app.post("/api/tickets/:id/attachments", upload.single("attachment"), async (req: Request, res: Response) => {
+  const requesterId = parseInt(req.headers["x-requester-id"] as string);
+  if (!requesterId || isNaN(requesterId)) {
+    res.status(401).json({ error: "Missing x-requester-id header" });
+    return;
+  }
+
+  const prisma = getPrisma();
+  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
+  if (!requester || !requester.isActive) {
+    res.status(403).json({ error: "Requester not found or inactive" });
+    return;
+  }
+
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  try {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    if (ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: "Access denied: ticket belongs to another requester" });
+      return;
+    }
+
+    const activeCount = await prisma.attachment.count({
+      where: { ticketId, deletedAt: null },
+    });
+    if (activeCount >= 5) {
+      res.status(400).json({ error: "Ticket already has maximum 5 active attachments." });
+      return;
+    }
+
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: "No attachment file provided." });
+      return;
+    }
+
+    const fileError = validateAttachmentFile(file);
+    if (fileError) {
+      res.status(400).json({ error: "Validation failed", details: [fileError] });
+      return;
+    }
+
+    const attachment = await prisma.attachment.create({
+      data: {
+        ticketId,
+        filename: file.originalname,
+        filePath: file.path,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+      },
+      select: {
+        id: true,
+        filename: true,
+        fileSize: true,
+        mimeType: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(201).json(attachment);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to upload attachment" });
+  }
+});
+
+app.get("/api/attachments/:id", async (req: Request, res: Response) => {
+  const requesterId = parseInt(req.headers["x-requester-id"] as string);
+  if (!requesterId || isNaN(requesterId)) {
+    res.status(401).json({ error: "Missing x-requester-id header" });
+    return;
+  }
+
+  const prisma = getPrisma();
+  const attachmentId = parseInt(req.params.id);
+  if (isNaN(attachmentId)) {
+    res.status(404).json({ error: "Attachment not found" });
+    return;
+  }
+
+  try {
+    const attachment = await prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      include: { ticket: { select: { requesterId: true } } },
+    });
+
+    if (!attachment) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    if (attachment.ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: "Access denied: ticket belongs to another requester" });
+      return;
+    }
+
+    if (attachment.deletedAt) {
+      res.status(410).json({
+        error: "Attachment has been removed",
+        deletedAt: attachment.deletedAt,
+        reason: attachment.deletionReason,
+      });
+      return;
+    }
+
+    const absolutePath = path.resolve(attachment.filePath);
+    res.download(absolutePath, attachment.filename);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to download attachment" });
+  }
+});
+
+app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
+  const requesterId = parseInt(req.headers["x-requester-id"] as string);
+  if (!requesterId || isNaN(requesterId)) {
+    res.status(401).json({ error: "Missing x-requester-id header" });
+    return;
+  }
+
+  const prisma = getPrisma();
+  const attachmentId = parseInt(req.params.id);
+  if (isNaN(attachmentId)) {
+    res.status(404).json({ error: "Attachment not found" });
+    return;
+  }
+
+  const deletionReason = typeof req.body.deletionReason === "string" ? req.body.deletionReason.trim() : "";
+  if (!deletionReason || deletionReason.length < 5 || deletionReason.length > 200) {
+    res.status(400).json({
+      error: "Validation failed",
+      details: ["Deletion reason is required and must be between 5 and 200 characters long."],
+    });
+    return;
+  }
+
+  try {
+    const attachment = await prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      include: { ticket: { select: { requesterId: true } } },
+    });
+
+    if (!attachment) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    if (attachment.ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: "Access denied: ticket belongs to another requester" });
+      return;
+    }
+
+    if (attachment.deletedAt) {
+      res.status(409).json({ error: "Attachment is already removed" });
+      return;
+    }
+
+    const updated = await prisma.attachment.update({
+      where: { id: attachmentId },
+      data: {
+        deletedAt: new Date(),
+        deletionReason,
+      },
+      select: {
+        id: true,
+        deletedAt: true,
+        deletionReason: true,
+      },
+    });
+
+    res.status(200).json({
+      message: "Attachment successfully removed",
+      id: updated.id,
+      deletedAt: updated.deletedAt,
+      deletionReason: updated.deletionReason,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to remove attachment" });
+  }
+});
+
 export default app;
+
 
