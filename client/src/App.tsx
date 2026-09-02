@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { RequesterProvider, useRequester } from "./context/RequesterContext";
 import RequesterSelector from "./components/RequesterSelector";
 import MyTickets from "./components/MyTickets";
+import RequesterTicketDetail from "./components/RequesterTicketDetail";
 import CreateTicket from "./components/CreateTicket";
 import { CreatedTicket } from "./api";
 
@@ -10,10 +11,12 @@ type Tab = "my-tickets" | "create-ticket";
 function MainAppShell() {
   const { requester, clearRequester } = useRequester();
   const [activeTab, setActiveTab] = useState<Tab>("my-tickets");
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   function handleTicketCreated(ticket: CreatedTicket) {
     setSuccessBanner(`Ticket ${ticket.ticketNumber} created successfully!`);
+    setSelectedTicketId(null);
     setActiveTab("my-tickets");
     setTimeout(() => setSuccessBanner(null), 6000);
   }
@@ -35,7 +38,7 @@ function MainAppShell() {
       {/* Zen Green Top Header */}
       <header className="app-header">
         <div className="d-flex align-items-center gap-4">
-          <div className="brand-title" onClick={() => setActiveTab("my-tickets")}>
+          <div className="brand-title" onClick={() => { setSelectedTicketId(null); setActiveTab("my-tickets"); }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
@@ -48,7 +51,7 @@ function MainAppShell() {
                 <button
                   type="button"
                   className={`nav-tab-item border-0 bg-transparent ${activeTab === "my-tickets" ? "active" : ""}`}
-                  onClick={() => setActiveTab("my-tickets")}
+                  onClick={() => { setSelectedTicketId(null); setActiveTab("my-tickets"); }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="3" width="7" height="7"></rect>
@@ -63,7 +66,7 @@ function MainAppShell() {
                 <button
                   type="button"
                   className={`nav-tab-item border-0 bg-transparent ${activeTab === "create-ticket" ? "active" : ""}`}
-                  onClick={() => setActiveTab("create-ticket")}
+                  onClick={() => { setSelectedTicketId(null); setActiveTab("create-ticket"); }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -96,15 +99,22 @@ function MainAppShell() {
       {/* Main Content Area */}
       <main className="container-fluid py-4 px-3 px-md-5 flex-grow-1">
         {activeTab === "my-tickets" && (
-          <div>
-            {successBanner && (
-              <div className="zen-banner-info mb-3">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>{successBanner}</span>
-              </div>
-            )}
-            <MyTickets onCreateTicketClick={() => setActiveTab("create-ticket")} />
-          </div>
+          selectedTicketId ? (
+            <RequesterTicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />
+          ) : (
+            <div>
+              {successBanner && (
+                <div className="zen-banner-info mb-3">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>{successBanner}</span>
+                </div>
+              )}
+              <MyTickets
+                onCreateTicketClick={() => { setSelectedTicketId(null); setActiveTab("create-ticket"); }}
+                onSelectTicket={(id) => setSelectedTicketId(id)}
+              />
+            </div>
+          )
         )}
 
         {activeTab === "create-ticket" && (

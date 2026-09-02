@@ -10,9 +10,10 @@ import {
 
 interface Props {
   onCreateTicketClick?: () => void;
+  onSelectTicket?: (ticketId: number) => void;
 }
 
-export default function MyTickets({ onCreateTicketClick }: Props) {
+export default function MyTickets({ onCreateTicketClick, onSelectTicket }: Props) {
   const { requester } = useRequester();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -349,7 +350,7 @@ export default function MyTickets({ onCreateTicketClick }: Props) {
               </thead>
               <tbody>
                 {tickets.map((t) => (
-                  <tr key={t.id} style={{ cursor: "pointer" }}>
+                  <tr key={t.id} style={{ cursor: "pointer" }} onClick={() => onSelectTicket?.(t.id)}>
                     <td className="fw-bold" style={{ fontFamily: "monospace", color: "var(--color-secondary-green)" }}>
                       {t.ticketNumber}
                     </td>
@@ -375,7 +376,8 @@ export default function MyTickets({ onCreateTicketClick }: Props) {
               <div
                 key={t.id}
                 className="p-3 rounded border"
-                style={{ backgroundColor: "#FFFFFF", borderColor: "var(--color-border-neutral)" }}
+                style={{ backgroundColor: "#FFFFFF", borderColor: "var(--color-border-neutral)", cursor: "pointer" }}
+                onClick={() => onSelectTicket?.(t.id)}
               >
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <span className="fw-bold small" style={{ fontFamily: "monospace", color: "var(--color-secondary-green)" }}>
