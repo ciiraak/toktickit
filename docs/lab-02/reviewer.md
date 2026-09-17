@@ -1,26 +1,48 @@
 # Lab 2 — Peer Review Record
 
-**Author:** <your name> — <student id> — GitHub: @ciiraak  
-**Peer reviewer:** <partner name> — <student id> — GitHub: @<username>  
+**Author:** Ari CLEMENT-KOKKONEN — 69540460006 — GitHub: @ciiraak
+**Peer reviewer:** Baptiste Dubroeucq — 69540460002 — GitHub: @bptdbr
+
+**Repository:** https://github.com/ciiraak/toktickit
+**Staging branch:** lab2 merged to main
 
 ## Pull Requests I authored (reviewed by my partner)
 
+Branches actually used during this sprint (from the development session): `feature/6-requester-context`, `feature/7-ticket-creation`, `feature/8-my-tickets-dashboard`, `feature/9-ticket-detail-attachments`, plus any API-test/E2E-test follow-up branches and the final `lab2-staging` → `main` release PR.
+
 | PR # | Branch Name | Reviewer Verdict / Comments |
 | :--- | :--- | :--- |
-| #16 | `feature/5-sprint-specifications` | Approved — Sprint specification, UI spec, API spec, and test plan documents reviewed and merged. |
-| #17 | `feature/6-requester-context` | Approved — Requester selection UI, localStorage persistence, and context provider reviewed. |
-| #18 | `feature/7-ticket-creation` | Approved — Create Ticket form with validation, file upload, and API integration reviewed. |
-| #19 | `feature/8-my-tickets` | Approved — My Tickets dashboard with search, category/priority/status filtering, pagination, and responsive table/card views reviewed. |
-| #21 | `feature/9-ticket-details-attachments` | Approved — Ticket detail screen, attachment upload/download/soft-removal endpoints, and E2E test coverage reviewed. |
+| 16 | `feature/6-requester-context` | approved |
+| 17| `feature/7-ticket-creation` | approved  |
+| 18| `feature/8-my-tickets-dashboard` |approved  |
+| 19 | `feature/9-ticket-detail-attachments` | approved  |
+| 20| `test verifications` | seems to work! |
+| 21| `lab2-staging` → `main` (release PR) | good job! |
 
-*   **Reviewer comment received**: `<to be filled after peer review>`
-*   **How I responded**: `<to be filled after peer review>`
+*   **Reviewer comment received**: `Nice fact checking of the AI agents!`
+*   **How I responded**: `Thanks it allowed me to crrect mistakes it made!`
 
 ## Pull Requests I reviewed for my partner
 
-| PR # | Branch Name | My Verdict / Comments |
+| PR # | Branch Name | Reviewer Verdict / Comments |
 | :--- | :--- | :--- |
-| | | `<to be filled after peer review>` |
+| 21| `feature/6-requester-context` | approved |
+| 22| `feature/7-ticket-creation` | approved  |
+| 23| `feature/8-my-tickets-dashboard` |approved  |
+| 24| `feature/9-ticket-detail-attachments` | approved  |
+| 25| `lab2-staging` → `main` (release PR) | good job! |
 
-*   **My review comment**: `<to be filled after peer review>`
-*   **Partner's response**: `<to be filled after peer review>`
+*   **My review comment**: `Nice time management skills!`
+*   **Partner's response**: `Thanks, I am trying to improve it!`
+
+## Kanban / Issue Tracking
+
+- [X ] All Issues (Requester Context, Create Ticket, My Tickets, Ticket Detail & Attachments, API Tests, E2E Tests, Documentation) moved to **Done** on the GitHub Project board before submission.
+- [ X] Screenshot of final Kanban board attached to the submission PDF (Part 1).
+
+## Approvals
+
+- [X] All feature-branch PRs approved before merge into staging branch.
+- [X] Staging branch integration-tested before the release PR.
+- [X] Release PR (staging → `main`) reviewed, approved, and merged
+- [X] No direct commits to `main` or the staging branch (all work via feature branches).
