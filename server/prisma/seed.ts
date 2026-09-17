@@ -1,9 +1,10 @@
 import { getPrisma } from "../src/prisma.js";
+import bcrypt from "bcryptjs";
 
 async function main() {
   const prisma = getPrisma();
 
-  // 1. Seed Categories (idempotent upsert)
+  // 1. Seed Categories
   const categories = [
     "Account and Access",
     "Hardware",
@@ -20,7 +21,7 @@ async function main() {
   }
   console.log(`✓ Seeded ${categories.length} categories.`);
 
-  // 2. Seed Related Systems (idempotent upsert)
+  // 2. Seed Related Systems
   const systems = [
     "Email",
     "Campus Wi-Fi",
@@ -40,23 +41,41 @@ async function main() {
   }
   console.log(`✓ Seeded ${systems.length} related systems.`);
 
-  // 3. Seed Development Requesters (active and inactive)
-  const requesters = [
-    { name: "Jennifer Anderson", email: "jennifer.anderson@kmutt.ac.th", isActive: true },
-    { name: "Michael Brown", email: "michael.brown@kmutt.ac.th", isActive: true },
-    { name: "Sarah Johnson", email: "sarah.johnson@kmutt.ac.th", isActive: true },
-    { name: "David Lee", email: "david.lee@kmutt.ac.th", isActive: true },
-    { name: "John Doe", email: "john.doe@kmutt.ac.th", isActive: false },
+  // 3. Seed Users
+  const passwordHash = await bcrypt.hash("Password123!", 10);
+  
+  const users = [
+    // Requesters
+    { name: "Jennifer Anderson", email: "jennifer.anderson@kmutt.ac.th", isActive: true, role: "REQUESTER" },
+    { name: "Michael Brown", email: "michael.brown@kmutt.ac.th", isActive: true, role: "REQUESTER" },
+    { name: "Sarah Johnson", email: "sarah.johnson@kmutt.ac.th", isActive: true, role: "REQUESTER" },
+    { name: "David Lee", email: "david.lee@kmutt.ac.th", isActive: true, role: "REQUESTER" },
+    { name: "John Doe", email: "john.doe@kmutt.ac.th", isActive: false, role: "REQUESTER" },
+    // IT Staff
+    { name: "IT Staff One", email: "staff1@kmutt.ac.th", isActive: true, role: "IT_STAFF" },
+    { name: "IT Staff Two", email: "staff2@kmutt.ac.th", isActive: true, role: "IT_STAFF" },
+    { name: "IT Staff Three", email: "staff3@kmutt.ac.th", isActive: true, role: "IT_STAFF" },
+    { name: "IT Staff Inactive", email: "staff.inactive@kmutt.ac.th", isActive: false, role: "IT_STAFF" },
+    // Administrator
+    { name: "Admin User", email: "admin@kmutt.ac.th", isActive: true, role: "ADMINISTRATOR" },
   ];
 
-  for (const req of requesters) {
-    await prisma.requester.upsert({
-      where: { email: req.email },
-      update: { name: req.name, isActive: req.isActive },
-      create: { name: req.name, email: req.email, isActive: req.isActive },
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: { name: user.name, isActive: user.isActive, role: user.role as any },
+      create: { 
+        name: user.name, 
+        email: user.email, 
+        isActive: user.isActive, 
+        role: user.role as any,
+        passwordHash,
+        requiresPasswordChange: true
+      },
     });
   }
-  console.log(`✓ Seeded ${requesters.length} development requesters (${requesters.filter(r => r.isActive).length} active, ${requesters.filter(r => !r.isActive).length} inactive).`);
+  
+  console.log(`✓ Seeded ${users.length} users.`);
 }
 
 main()

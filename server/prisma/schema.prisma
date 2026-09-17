@@ -9,11 +9,7 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-}
+
 // ---------------------------------------------------------------------------
 // Issue 3 — Create and seed IT request categories
 // Define a Category model with:
@@ -31,13 +27,23 @@ model Category {
   tickets   Ticket[]
 }
 
-model Requester {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  tickets   Ticket[]
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
+}
+
+model User {
+  id                     Int      @id @default(autoincrement())
+  name                   String
+  email                  String   @unique
+  passwordHash           String
+  role                   Role     @default(REQUESTER)
+  requiresPasswordChange Boolean  @default(true)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  tickets                Ticket[] @relation("TicketRequester")
+  ownedTickets           Ticket[] @relation("TicketOwner")
 }
 
 model RelatedSystem {
@@ -52,7 +58,9 @@ model Ticket {
   id                Int          @id @default(autoincrement())
   ticketNumber      String       @unique
   requesterId       Int
-  requester         Requester    @relation(fields: [requesterId], references: [id])
+  requester         User         @relation("TicketRequester", fields: [requesterId], references: [id])
+  ownerId           Int?
+  owner             User?        @relation("TicketOwner", fields: [ownerId], references: [id])
   categoryId        Int
   category          Category     @relation(fields: [categoryId], references: [id])
   relatedSystemId   Int
@@ -60,6 +68,7 @@ model Ticket {
   summary           String
   description       String
   requestedPriority String
+  itPriority        String?
   currentStatus     String       @default("New")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
