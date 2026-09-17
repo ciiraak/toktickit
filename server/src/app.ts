@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber, validateAttachmentFile, validateTicketFields } from "./ticketHelpers.js";
 import authRoutes from "./routes/auth.js";
+import staffRoutes from "./routes/staff.js";
 import { requireAuth, requireRole } from "./authMiddleware.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,9 @@ app.use(cookieParser());
 
 // Auth routes
 app.use("/api/auth", authRoutes);
+
+// Staff routes
+app.use("/api/staff", staffRoutes);
 
 // ---------------------------------------------------------------------------
 // Issue 2 — API health check
