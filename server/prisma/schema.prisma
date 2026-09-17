@@ -44,6 +44,8 @@ model User {
   createdAt              DateTime @default(now())
   tickets                Ticket[] @relation("TicketRequester")
   ownedTickets           Ticket[] @relation("TicketOwner")
+  comments               Comment[]
+  notes                  Note[]
 }
 
 model RelatedSystem {
@@ -73,6 +75,8 @@ model Ticket {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   attachments       Attachment[]
+  comments          Comment[]
+  notes             Note[]
 
   @@index([requesterId])
   @@index([categoryId])
@@ -95,3 +99,26 @@ model Attachment {
   @@index([ticketId])
 }
 
+model Comment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
