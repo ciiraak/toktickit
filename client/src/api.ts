@@ -56,6 +56,63 @@ export async function fetchSystems(): Promise<RelatedSystem[]> {
   return res.json();
 }
 
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+  requiresPasswordChange: boolean;
+  isActive?: boolean;
+}
+
+export async function loginApi(email: string, password: string): Promise<AuthUser> {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Invalid email or password" }));
+    throw new Error(body.error ?? "Invalid email or password");
+  }
+  return res.json();
+}
+
+export async function logoutApi(): Promise<void> {
+  await fetch(`${API_URL}/api/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+}
+
+export async function getCurrentUserApi(): Promise<AuthUser | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/auth/me`, {
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function changePasswordApi(currentPassword: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Failed to update password" }));
+    throw new Error(body.error ?? "Failed to update password");
+  }
+}
+
 export interface CreatedTicket {
   id: number;
   ticketNumber: string;
@@ -93,6 +150,7 @@ export async function createTicket(
   const res = await fetch(`${API_URL}/api/tickets`, {
     method: "POST",
     headers: { "x-requester-id": String(requesterId) },
+    credentials: "include",
     body: formData,
   });
 
@@ -158,6 +216,7 @@ export async function fetchMyTickets(
   const queryString = query.toString() ? `?${query.toString()}` : "";
   const res = await fetch(`${API_URL}/api/tickets${queryString}`, {
     headers: { "x-requester-id": String(requesterId) },
+    credentials: "include",
   });
 
   if (!res.ok) {
