@@ -290,5 +290,122 @@ export async function softRemoveAttachment(
   return res.json();
 }
 
+// ---------------------------------------------------------------------------
+// Issue 6 — Administrator User Management API
+// ---------------------------------------------------------------------------
+
+export type UserRole = "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  requiresPasswordChange: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AdminUserListResponse {
+  users: AdminUser[];
+  pagination: PaginationMeta;
+}
+
+export interface AdminUserQueryParams {
+  search?: string;
+  role?: string;
+  isActive?: boolean | string;
+  sortBy?: string;
+  sortOrder?: string;
+  page?: number;
+  limit?: number;
+}
+
+export async function fetchAdminUsers(params?: AdminUserQueryParams): Promise<AdminUserListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.append("search", params.search);
+  if (params?.role) query.append("role", params.role);
+  if (params?.isActive !== undefined && params?.isActive !== "") query.append("isActive", String(params.isActive));
+  if (params?.sortBy) query.append("sortBy", params.sortBy);
+  if (params?.sortOrder) query.append("sortOrder", params.sortOrder);
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.limit) query.append("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  const res = await fetch(`${API_URL}/api/admin/users${queryString}`, {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Failed to fetch users" }));
+    throw new Error(body.error ?? "Failed to fetch users");
+  }
+  return res.json();
+}
+
+export async function createAdminUser(data: {
+  name: string;
+  email: string;
+  role: UserRole;
+  initialPassword: string;
+}): Promise<AdminUser> {
+  const res = await fetch(`${API_URL}/api/admin/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Failed to create user" }));
+    const details = body.details ? ` (${(body.details as string[]).join(", ")})` : "";
+    throw new Error(`${body.error}${details}`);
+  }
+  return res.json();
+}
+
+export async function updateAdminUser(
+  id: number,
+  data: {
+    name?: string;
+    email?: string;
+    role?: UserRole;
+    isActive?: boolean;
+  }
+): Promise<AdminUser> {
+  const res = await fetch(`${API_URL}/api/admin/users/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Failed to update user" }));
+    const details = body.details ? ` (${(body.details as string[]).join(", ")})` : "";
+    throw new Error(`${body.error}${details}`);
+  }
+  return res.json();
+}
+
+export async function resetAdminUserPassword(
+  id: number,
+  initialPassword?: string
+): Promise<{ message: string; id: number; requiresPasswordChange: boolean }> {
+  const res = await fetch(`${API_URL}/api/admin/users/${id}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ initialPassword }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Failed to reset password" }));
+    throw new Error(body.error ?? "Failed to reset password");
+  }
+  return res.json();
+}
+
+
 
 

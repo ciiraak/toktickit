@@ -6,9 +6,10 @@ import RequesterTicketDetail from "./components/RequesterTicketDetail";
 import CreateTicket from "./components/CreateTicket";
 import StaffTicketQueue from "./components/StaffTicketQueue";
 import StaffTicketDetail from "./components/StaffTicketDetail";
+import AdminUserManagement from "./components/AdminUserManagement";
 import { CreatedTicket } from "./api";
 
-type Tab = "my-tickets" | "create-ticket" | "staff-queue";
+type Tab = "my-tickets" | "create-ticket" | "staff-queue" | "admin-users";
 
 function MainAppShell() {
   const { requester, clearRequester } = useRequester();
@@ -93,6 +94,21 @@ function MainAppShell() {
                   IT Staff Queue
                 </button>
               </li>
+              <li>
+                <button
+                  type="button"
+                  className={`nav-tab-item border-0 bg-transparent ${activeTab === "admin-users" ? "active" : ""}`}
+                  onClick={() => { setSelectedTicketId(null); setSelectedStaffTicketId(null); setActiveTab("admin-users"); }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  User Management
+                </button>
+              </li>
             </ul>
           </nav>
         </div>
@@ -151,6 +167,10 @@ function MainAppShell() {
               onSelectTicket={(id) => setSelectedStaffTicketId(id)}
             />
           )
+        )}
+
+        {activeTab === "admin-users" && (
+          <AdminUserManagement currentUserId={requester.id} />
         )}
       </main>
     </div>
