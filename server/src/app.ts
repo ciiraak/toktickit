@@ -277,6 +277,10 @@ app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => 
           },
           orderBy: { createdAt: "asc" },
         },
+        comments: {
+          include: { author: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
 
@@ -293,6 +297,51 @@ app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => 
     res.status(200).json(ticket);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch ticket detail" });
+  }
+});
+
+app.post("/api/tickets/:id/public-comments", requireAuth, async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
+  if (!content) {
+    res.status(400).json({ error: "Comment content is required and cannot be empty." });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    // Requesters may only comment on their own tickets
+    if (req.user!.role === "REQUESTER" && ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: "Access denied: ticket belongs to another requester" });
+      return;
+    }
+
+    const comment = await prisma.comment.create({
+      data: {
+        ticketId,
+        authorId: req.user!.id,
+        content,
+      },
+      include: {
+        author: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(201).json(comment);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to post comment" });
   }
 });
 

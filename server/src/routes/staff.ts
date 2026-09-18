@@ -117,6 +117,14 @@ router.get("/tickets/:id", async (req: Request, res: Response) => {
           },
           orderBy: { createdAt: "asc" },
         },
+        comments: {
+          include: { author: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: "asc" },
+        },
+        notes: {
+          include: { author: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
 
@@ -128,6 +136,179 @@ router.get("/tickets/:id", async (req: Request, res: Response) => {
     res.status(200).json(ticket);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch ticket detail" });
+  }
+});
+
+const VALID_STATUSES = [
+  "New", "Open", "In Progress", "Waiting for Requester",
+  "Resolved", "Closed", "Reopened", "Cancelled",
+];
+const VALID_PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
+
+// PATCH /api/staff/tickets/:id — update owner, itPriority, status
+router.patch("/tickets/:id", async (req: Request, res: Response) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const { ownerId, itPriority, status } = req.body;
+  const updates: any = {};
+
+  if (ownerId !== undefined) {
+    if (ownerId === null) {
+      updates.ownerId = null;
+    } else {
+      const prisma = getPrisma();
+      const owner = await prisma.user.findUnique({ where: { id: Number(ownerId) } });
+      if (!owner || !owner.isActive || (owner.role !== "IT_STAFF" && owner.role !== "ADMINISTRATOR")) {
+        res.status(400).json({ error: "Invalid owner: must be an active IT Staff or Administrator." });
+        return;
+      }
+      updates.ownerId = Number(ownerId);
+    }
+  }
+
+  if (itPriority !== undefined) {
+    if (!VALID_PRIORITIES.includes(itPriority)) {
+      res.status(400).json({ error: `Invalid itPriority. Must be one of: ${VALID_PRIORITIES.join(", ")}` });
+      return;
+    }
+    updates.itPriority = itPriority;
+  }
+
+  if (status !== undefined) {
+    if (!VALID_STATUSES.includes(status)) {
+      res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` });
+      return;
+    }
+    updates.currentStatus = status;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields provided to update." });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: updates,
+      include: {
+        owner: { select: { id: true, name: true } },
+        requester: { select: { id: true, name: true, email: true } },
+        category: { select: { id: true, name: true } },
+        relatedSystem: { select: { id: true, name: true } },
+      },
+    });
+
+    res.status(200).json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update ticket" });
+  }
+});
+
+// POST /api/staff/tickets/:id/internal-notes — append private internal note
+router.post("/tickets/:id/internal-notes", async (req: Request, res: Response) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
+  if (!content) {
+    res.status(400).json({ error: "Note content is required and cannot be empty." });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const note = await prisma.note.create({
+      data: {
+        ticketId,
+        authorId: req.user!.id,
+        content,
+      },
+      include: {
+        author: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(201).json(note);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create internal note" });
+  }
+});
+
+// POST /api/staff/tickets/:id/public-comments — append public comment (staff side)
+router.post("/tickets/:id/public-comments", async (req: Request, res: Response) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
+  if (!content) {
+    res.status(400).json({ error: "Comment content is required and cannot be empty." });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const comment = await prisma.comment.create({
+      data: {
+        ticketId,
+        authorId: req.user!.id,
+        content,
+      },
+      include: {
+        author: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(201).json(comment);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create comment" });
+  }
+});
+
+// GET /api/staff/assignees — list active IT staff and administrators for ticket assignment
+router.get("/assignees", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const assignees = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: { in: ["IT_STAFF", "ADMINISTRATOR"] },
+      },
+      select: { id: true, name: true, email: true, role: true },
+      orderBy: { name: "asc" },
+    });
+    res.status(200).json(assignees);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch assignees" });
   }
 });
 
