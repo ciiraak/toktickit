@@ -3,8 +3,13 @@ import cors from "cors";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
+import cookieParser from "cookie-parser";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber, validateAttachmentFile, validateTicketFields } from "./ticketHelpers.js";
+import authRoutes from "./routes/auth.js";
+import staffRoutes from "./routes/staff.js";
+import adminRoutes from "./routes/admin.js";
+import { requireAuth, requireRole } from "./authMiddleware.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,8 +23,18 @@ const upload = multer({
 // Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors());          // already wired: lets the Vite dev server call this API
+app.use(cors({ origin: true, credentials: true })); // Updated for cookies
 app.use(express.json());
+app.use(cookieParser());
+
+// Auth routes
+app.use("/api/auth", authRoutes);
+
+// Staff routes
+app.use("/api/staff", staffRoutes);
+
+// Admin routes
+app.use("/api/admin", adminRoutes);
 
 // ---------------------------------------------------------------------------
 // Issue 2 — API health check
@@ -47,8 +62,8 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
 
 app.get("/api/requesters", async (_req: Request, res: Response) => {
   try {
-    const requesters = await getPrisma().requester.findMany({
-      where: { isActive: true },
+    const requesters = await getPrisma().user.findMany({
+      where: { isActive: true, role: "REQUESTER" },
       orderBy: { id: "asc" },
       select: {
         id: true,
@@ -78,20 +93,9 @@ app.get("/api/systems", async (_req: Request, res: Response) => {
   }
 });
 
-app.post("/api/tickets", upload.array("attachments", 5), async (req: Request, res: Response) => {
-  const requesterId = parseInt(req.headers["x-requester-id"] as string);
-  if (!requesterId || isNaN(requesterId)) {
-    res.status(401).json({ error: "Missing x-requester-id header" });
-    return;
-  }
-
-  // Validate active requester (BR-04, BR-11)
+app.post("/api/tickets", requireAuth, requireRole(["REQUESTER", "IT_STAFF", "ADMINISTRATOR"]), upload.array("attachments", 5), async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
   const prisma = getPrisma();
-  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-  if (!requester || !requester.isActive) {
-    res.status(403).json({ error: "Requester not found or inactive" });
-    return;
-  }
 
   // Validate ticket fields (BR-05)
   const fieldErrors = validateTicketFields(req.body);
@@ -159,19 +163,9 @@ app.post("/api/tickets", upload.array("attachments", 5), async (req: Request, re
   }
 });
 
-app.get("/api/tickets", async (req: Request, res: Response) => {
-  const requesterId = parseInt(req.headers["x-requester-id"] as string);
-  if (!requesterId || isNaN(requesterId)) {
-    res.status(401).json({ error: "Missing x-requester-id header" });
-    return;
-  }
-
+app.get("/api/tickets", requireAuth, async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
   const prisma = getPrisma();
-  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-  if (!requester || !requester.isActive) {
-    res.status(403).json({ error: "Requester not found or inactive" });
-    return;
-  }
 
   try {
     const {
@@ -258,19 +252,9 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/api/tickets/:id", async (req: Request, res: Response) => {
-  const requesterId = parseInt(req.headers["x-requester-id"] as string);
-  if (!requesterId || isNaN(requesterId)) {
-    res.status(401).json({ error: "Missing x-requester-id header" });
-    return;
-  }
-
+app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
   const prisma = getPrisma();
-  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-  if (!requester || !requester.isActive) {
-    res.status(403).json({ error: "Requester not found or inactive" });
-    return;
-  }
 
   const ticketId = parseInt(req.params.id);
   if (isNaN(ticketId)) {
@@ -297,6 +281,10 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
           },
           orderBy: { createdAt: "asc" },
         },
+        comments: {
+          include: { author: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
 
@@ -316,19 +304,54 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/api/tickets/:id/attachments", upload.single("attachment"), async (req: Request, res: Response) => {
-  const requesterId = parseInt(req.headers["x-requester-id"] as string);
-  if (!requesterId || isNaN(requesterId)) {
-    res.status(401).json({ error: "Missing x-requester-id header" });
+app.post("/api/tickets/:id/public-comments", requireAuth, async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
     return;
   }
 
-  const prisma = getPrisma();
-  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-  if (!requester || !requester.isActive) {
-    res.status(403).json({ error: "Requester not found or inactive" });
+  const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
+  if (!content) {
+    res.status(400).json({ error: "Comment content is required and cannot be empty." });
     return;
   }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    // Requesters may only comment on their own tickets
+    if (req.user!.role === "REQUESTER" && ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: "Access denied: ticket belongs to another requester" });
+      return;
+    }
+
+    const comment = await prisma.comment.create({
+      data: {
+        ticketId,
+        authorId: req.user!.id,
+        content,
+      },
+      include: {
+        author: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(201).json(comment);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to post comment" });
+  }
+});
+
+app.post("/api/tickets/:id/attachments", requireAuth, upload.single("attachment"), async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
+  const prisma = getPrisma();
 
   const ticketId = parseInt(req.params.id);
   if (isNaN(ticketId)) {
@@ -391,13 +414,8 @@ app.post("/api/tickets/:id/attachments", upload.single("attachment"), async (req
   }
 });
 
-app.get("/api/attachments/:id", async (req: Request, res: Response) => {
-  const requesterId = parseInt(req.headers["x-requester-id"] as string);
-  if (!requesterId || isNaN(requesterId)) {
-    res.status(401).json({ error: "Missing x-requester-id header" });
-    return;
-  }
-
+app.get("/api/attachments/:id", requireAuth, async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
   const prisma = getPrisma();
   const attachmentId = parseInt(req.params.id);
   if (isNaN(attachmentId)) {
@@ -437,13 +455,8 @@ app.get("/api/attachments/:id", async (req: Request, res: Response) => {
   }
 });
 
-app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
-  const requesterId = parseInt(req.headers["x-requester-id"] as string);
-  if (!requesterId || isNaN(requesterId)) {
-    res.status(401).json({ error: "Missing x-requester-id header" });
-    return;
-  }
-
+app.delete("/api/attachments/:id", requireAuth, async (req: Request, res: Response) => {
+  const requesterId = req.user!.id;
   const prisma = getPrisma();
   const attachmentId = parseInt(req.params.id);
   if (isNaN(attachmentId)) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRequester } from "../context/RequesterContext";
+import { useAuth } from "../context/AuthContext";
 import {
   fetchCategories,
   fetchSystems,
@@ -28,7 +29,9 @@ interface Props {
 }
 
 export default function CreateTicket({ onSuccess }: Props) {
+  const { user } = useAuth();
   const { requester } = useRequester();
+  const activeUser = user || requester;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
@@ -122,12 +125,12 @@ export default function CreateTicket({ onSuccess }: Props) {
       setErrors(errs);
       return;
     }
-    if (!requester) return;
+    if (!activeUser) return;
 
     setSubmitting(true);
     setErrors({});
     try {
-      const ticket = await createTicket(requester.id, {
+      const ticket = await createTicket(activeUser.id, {
         summary: summary.trim(),
         description: description.trim(),
         categoryId: parseInt(categoryId),
@@ -206,7 +209,7 @@ export default function CreateTicket({ onSuccess }: Props) {
           </div>
           <div className="col-md-4">
             <label className="form-label-custom">Requester</label>
-            <input className="form-control-custom" value={requester?.name ?? ""} readOnly style={{ backgroundColor: "#F0F4F2", cursor: "default" }} />
+            <input className="form-control-custom" value={activeUser?.name ?? ""} readOnly style={{ backgroundColor: "#F0F4F2", cursor: "default" }} />
           </div>
         </div>
 

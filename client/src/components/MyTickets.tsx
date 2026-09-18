@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRequester } from "../context/RequesterContext";
+import { useAuth } from "../context/AuthContext";
 import {
   fetchMyTickets,
   fetchCategories,
@@ -14,7 +15,9 @@ interface Props {
 }
 
 export default function MyTickets({ onCreateTicketClick, onSelectTicket }: Props) {
+  const { user } = useAuth();
   const { requester } = useRequester();
+  const activeUser = user || requester;
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
@@ -39,12 +42,12 @@ export default function MyTickets({ onCreateTicketClick, onSelectTicket }: Props
 
   // Fetch Tickets when requester, page, or filters change
   const loadTickets = useCallback(async () => {
-    if (!requester) return;
+    if (!activeUser) return;
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetchMyTickets(requester.id, {
+      const res = await fetchMyTickets(activeUser.id, {
         search: search.trim() || undefined,
         category: category || undefined,
         priority: priority || undefined,
@@ -59,7 +62,7 @@ export default function MyTickets({ onCreateTicketClick, onSelectTicket }: Props
     } finally {
       setLoading(false);
     }
-  }, [requester, search, category, priority, status, page]);
+  }, [activeUser, search, category, priority, status, page]);
 
   useEffect(() => {
     loadTickets();

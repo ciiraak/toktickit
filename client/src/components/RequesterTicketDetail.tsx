@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRequester } from "../context/RequesterContext";
+import { useAuth } from "../context/AuthContext";
 import {
   fetchTicketDetail,
   uploadAttachmentToTicket,
   getAttachmentDownloadUrl,
   softRemoveAttachment,
+  postPublicComment,
   TicketDetail,
   AttachmentDetail,
 } from "../api";
@@ -15,7 +17,9 @@ interface Props {
 }
 
 export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
+  const { user } = useAuth();
   const { requester } = useRequester();
+  const activeUser = user || requester;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
@@ -32,13 +36,19 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
   const [removing, setRemoving] = useState(false);
   const [removalError, setRemovalError] = useState<string | null>(null);
 
+  // Public Comments State
+  const [newComment, setNewComment] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [resolvedSuccess, setResolvedSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     async function load() {
-      if (!requester) return;
+      if (!activeUser) return;
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchTicketDetail(requester.id, ticketId);
+        const data = await fetchTicketDetail(activeUser.id, ticketId);
         setTicket(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load ticket detail");
@@ -47,7 +57,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
       }
     }
     load();
-  }, [requester, ticketId]);
+  }, [activeUser, ticketId]);
 
   if (loading) {
     return (
@@ -75,7 +85,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !requester) return;
+    if (!file || !activeUser) return;
 
     if (isMaxAttachmentsReached) {
       setActionError("Ticket has already reached the maximum 5 active attachments limit.");
@@ -85,7 +95,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
     setUploading(true);
     setActionError(null);
     try {
-      const newAttachment = await uploadAttachmentToTicket(requester.id, ticketId, file);
+      const newAttachment = await uploadAttachmentToTicket(activeUser.id, ticketId, file);
       setTicket((prev) => (prev ? { ...prev, attachments: [...prev.attachments, newAttachment] } : null));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to upload attachment");
@@ -103,7 +113,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
 
   async function handleConfirmRemove(e: React.FormEvent) {
     e.preventDefault();
-    if (!removingAttachment || !requester) return;
+    if (!removingAttachment || !activeUser) return;
 
     const trimmedReason = deletionReason.trim();
     if (trimmedReason.length < 5) {
@@ -118,7 +128,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
     setRemoving(true);
     setRemovalError(null);
     try {
-      const result = await softRemoveAttachment(requester.id, removingAttachment.id, trimmedReason);
+      const result = await softRemoveAttachment(activeUser.id, removingAttachment.id, trimmedReason);
       setTicket((prev) => {
         if (!prev) return null;
         return {
@@ -135,6 +145,49 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
       setRemovalError(err instanceof Error ? err.message : "Failed to remove attachment");
     } finally {
       setRemoving(false);
+    }
+  }
+
+  async function handlePostComment(e: React.FormEvent) {
+    e.preventDefault();
+    const content = newComment.trim();
+    if (!content || !activeUser) return;
+
+    setPostingComment(true);
+    setCommentError(null);
+    try {
+      const comment = await postPublicComment(activeUser.id, ticketId, content);
+      setTicket((prev) =>
+        prev ? { ...prev, comments: [...(prev.comments || []), comment] } : null
+      );
+      setNewComment("");
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : "Failed to post comment");
+    } finally {
+      setPostingComment(false);
+    }
+  }
+
+  async function handleProblemResolved() {
+    if (!activeUser || postingComment) return;
+
+    setPostingComment(true);
+    setCommentError(null);
+    try {
+      const comment = await postPublicComment(
+        activeUser.id,
+        ticketId,
+        "Requester indicated that the problem appears resolved."
+      );
+      setTicket((prev) =>
+        prev ? { ...prev, comments: [...(prev.comments || []), comment] } : null
+      );
+      setResolvedSuccess("Thank you! IT Staff has been notified that your problem appears resolved.");
+      setTimeout(() => setResolvedSuccess(null), 6000);
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : "Failed to record resolution indication");
+    } finally {
+      setPostingComment(false);
     }
   }
 
@@ -384,19 +437,85 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
         )}
       </div>
 
-      {/* Mock Collaboration / Historical Comments Section */}
+      {/* Public Comments & Actions Section */}
       <div className="zen-card">
-        <h2 className="h6 text-muted fw-semibold text-uppercase mb-3" style={{ letterSpacing: "0.5px" }}>
-          Public Comments & Work Log (Read Only)
-        </h2>
-        <div className="p-3 rounded border bg-light text-muted small">
-          <p className="mb-1">
-            <strong>Jennifer Anderson (Requester):</strong> Thank you for taking a look at this issue.
-          </p>
-          <p className="mb-0 text-muted" style={{ fontSize: "0.75rem" }}>
-            May 13, 2026 11:45 AM · Comments will be interactive in Lab 3.
-          </p>
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h2 className="h6 text-muted fw-semibold text-uppercase mb-0" style={{ letterSpacing: "0.5px" }}>
+            Public Comments & Work Log
+          </h2>
+
+          {/* Problem Appears Resolved Action (BR-05) */}
+          {ticket.currentStatus !== "Resolved" && ticket.currentStatus !== "Closed" && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-success"
+              onClick={handleProblemResolved}
+              disabled={postingComment}
+              title="Indicate that your problem appears resolved (IT staff will verify and close the ticket)"
+            >
+              ✓ Problem Appears Resolved
+            </button>
+          )}
         </div>
+
+        {resolvedSuccess && (
+          <div className="zen-banner-info mb-3">
+            {resolvedSuccess}
+          </div>
+        )}
+
+        {commentError && (
+          <div className="zen-banner-error mb-3">
+            {commentError}
+          </div>
+        )}
+
+        {/* Comments List */}
+        {(!ticket.comments || ticket.comments.length === 0) ? (
+          <p className="text-muted small mb-3 fst-italic">
+            No comments yet. Post an update below.
+          </p>
+        ) : (
+          <div className="d-flex flex-column gap-2 mb-3">
+            {ticket.comments.map((comment) => (
+              <div key={comment.id} className="p-3 rounded border bg-light small">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <strong>
+                    {comment.author.name} ({comment.author.role})
+                  </strong>
+                  <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                    {new Date(comment.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <div style={{ whiteSpace: "pre-wrap" }}>{comment.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* New Comment Input */}
+        <form onSubmit={handlePostComment}>
+          <div className="mb-2">
+            <textarea
+              className="form-control-custom"
+              style={{ height: 80, resize: "vertical" }}
+              placeholder="Write a public comment or reply to IT staff..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              disabled={postingComment}
+            />
+          </div>
+          <div className="d-flex justify-content-end">
+            <button
+              type="submit"
+              className="btn-zen-primary"
+              style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem" }}
+              disabled={postingComment || !newComment.trim()}
+            >
+              {postingComment ? "Posting..." : "Post Comment"}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Soft Removal Reason Modal */}
