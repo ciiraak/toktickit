@@ -4,14 +4,17 @@ import RequesterSelector from "./components/RequesterSelector";
 import MyTickets from "./components/MyTickets";
 import RequesterTicketDetail from "./components/RequesterTicketDetail";
 import CreateTicket from "./components/CreateTicket";
+import StaffTicketQueue from "./components/StaffTicketQueue";
+import StaffTicketDetail from "./components/StaffTicketDetail";
 import { CreatedTicket } from "./api";
 
-type Tab = "my-tickets" | "create-ticket";
+type Tab = "my-tickets" | "create-ticket" | "staff-queue";
 
 function MainAppShell() {
   const { requester, clearRequester } = useRequester();
   const [activeTab, setActiveTab] = useState<Tab>("my-tickets");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [selectedStaffTicketId, setSelectedStaffTicketId] = useState<number | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   function handleTicketCreated(ticket: CreatedTicket) {
@@ -75,6 +78,21 @@ function MainAppShell() {
                   Create Ticket
                 </button>
               </li>
+              <li>
+                <button
+                  type="button"
+                  className={`nav-tab-item border-0 bg-transparent ${activeTab === "staff-queue" ? "active" : ""}`}
+                  onClick={() => { setSelectedStaffTicketId(null); setActiveTab("staff-queue"); }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  IT Staff Queue
+                </button>
+              </li>
             </ul>
           </nav>
         </div>
@@ -119,6 +137,20 @@ function MainAppShell() {
 
         {activeTab === "create-ticket" && (
           <CreateTicket onSuccess={handleTicketCreated} />
+        )}
+
+        {activeTab === "staff-queue" && (
+          selectedStaffTicketId ? (
+            <StaffTicketDetail
+              ticketId={selectedStaffTicketId}
+              onBack={() => setSelectedStaffTicketId(null)}
+              currentUserId={requester.id}
+            />
+          ) : (
+            <StaffTicketQueue
+              onSelectTicket={(id) => setSelectedStaffTicketId(id)}
+            />
+          )
         )}
       </main>
     </div>
