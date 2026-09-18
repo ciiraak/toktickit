@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRequester } from "../context/RequesterContext";
+import { useAuth } from "../context/AuthContext";
 import {
   fetchTicketDetail,
   uploadAttachmentToTicket,
@@ -16,7 +17,9 @@ interface Props {
 }
 
 export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
+  const { user } = useAuth();
   const { requester } = useRequester();
+  const activeUser = user || requester;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
@@ -41,11 +44,11 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
 
   useEffect(() => {
     async function load() {
-      if (!requester) return;
+      if (!activeUser) return;
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchTicketDetail(requester.id, ticketId);
+        const data = await fetchTicketDetail(activeUser.id, ticketId);
         setTicket(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load ticket detail");
@@ -54,7 +57,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
       }
     }
     load();
-  }, [requester, ticketId]);
+  }, [activeUser, ticketId]);
 
   if (loading) {
     return (
@@ -82,7 +85,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !requester) return;
+    if (!file || !activeUser) return;
 
     if (isMaxAttachmentsReached) {
       setActionError("Ticket has already reached the maximum 5 active attachments limit.");
@@ -92,7 +95,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
     setUploading(true);
     setActionError(null);
     try {
-      const newAttachment = await uploadAttachmentToTicket(requester.id, ticketId, file);
+      const newAttachment = await uploadAttachmentToTicket(activeUser.id, ticketId, file);
       setTicket((prev) => (prev ? { ...prev, attachments: [...prev.attachments, newAttachment] } : null));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to upload attachment");
@@ -110,7 +113,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
 
   async function handleConfirmRemove(e: React.FormEvent) {
     e.preventDefault();
-    if (!removingAttachment || !requester) return;
+    if (!removingAttachment || !activeUser) return;
 
     const trimmedReason = deletionReason.trim();
     if (trimmedReason.length < 5) {
@@ -125,7 +128,7 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
     setRemoving(true);
     setRemovalError(null);
     try {
-      const result = await softRemoveAttachment(requester.id, removingAttachment.id, trimmedReason);
+      const result = await softRemoveAttachment(activeUser.id, removingAttachment.id, trimmedReason);
       setTicket((prev) => {
         if (!prev) return null;
         return {
@@ -148,12 +151,12 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
   async function handlePostComment(e: React.FormEvent) {
     e.preventDefault();
     const content = newComment.trim();
-    if (!content || !requester) return;
+    if (!content || !activeUser) return;
 
     setPostingComment(true);
     setCommentError(null);
     try {
-      const comment = await postPublicComment(requester.id, ticketId, content);
+      const comment = await postPublicComment(activeUser.id, ticketId, content);
       setTicket((prev) =>
         prev ? { ...prev, comments: [...(prev.comments || []), comment] } : null
       );
@@ -166,13 +169,13 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
   }
 
   async function handleProblemResolved() {
-    if (!requester || postingComment) return;
+    if (!activeUser || postingComment) return;
 
     setPostingComment(true);
     setCommentError(null);
     try {
       const comment = await postPublicComment(
-        requester.id,
+        activeUser.id,
         ticketId,
         "Requester indicated that the problem appears resolved."
       );

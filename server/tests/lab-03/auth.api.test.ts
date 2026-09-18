@@ -9,21 +9,21 @@ describe("Lab 3 - Auth API", () => {
   let password = "Password123!";
 
   beforeAll(async () => {
-    // Ensure the test user exists
+    // Ensure the test user exists with the exact expected password hash
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { email: activeRequesterEmail } });
-    if (!user) {
-      await prisma.user.create({
-        data: {
-          name: "Test User",
-          email: activeRequesterEmail,
-          passwordHash: await bcrypt.hash(password, 10),
-          role: "REQUESTER",
-          requiresPasswordChange: true,
-          isActive: true
-        }
-      });
-    }
+    const hash = await bcrypt.hash(password, 10);
+    await prisma.user.upsert({
+      where: { email: activeRequesterEmail },
+      update: { passwordHash: hash, isActive: true },
+      create: {
+        name: "Test User",
+        email: activeRequesterEmail,
+        passwordHash: hash,
+        role: "REQUESTER",
+        requiresPasswordChange: true,
+        isActive: true,
+      },
+    });
   });
 
   describe("API-01 & API-02: POST /api/auth/login", () => {
