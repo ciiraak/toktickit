@@ -177,6 +177,17 @@ export interface AttachmentDetail {
   deletionReason: string | null;
 }
 
+export interface TicketCommentDetail {
+  id: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+    role: string;
+  };
+}
+
 export interface TicketDetail {
   id: number;
   ticketNumber: string;
@@ -190,6 +201,7 @@ export interface TicketDetail {
   category: { id: number; name: string };
   relatedSystem: { id: number; name: string };
   attachments: AttachmentDetail[];
+  comments?: TicketCommentDetail[];
 }
 
 export async function fetchTicketDetail(
@@ -198,11 +210,34 @@ export async function fetchTicketDetail(
 ): Promise<TicketDetail> {
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}`, {
     headers: { "x-requester-id": String(requesterId) },
+    credentials: "include",
   });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: "Failed to fetch ticket detail" }));
     throw new Error(body.error ?? "Failed to fetch ticket detail");
+  }
+  return res.json();
+}
+
+export async function postPublicComment(
+  requesterId: number,
+  ticketId: number,
+  content: string
+): Promise<TicketCommentDetail> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-requester-id": String(requesterId),
+    },
+    credentials: "include",
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Failed to post comment" }));
+    throw new Error(body.error ?? "Failed to post comment");
   }
   return res.json();
 }
