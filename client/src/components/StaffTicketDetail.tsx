@@ -62,16 +62,16 @@ interface Props {
   currentUserId?: number;
 }
 
-const STATUS_OPTIONS = [
-  "New",
-  "Open",
-  "In Progress",
-  "Waiting for Requester",
-  "Resolved",
-  "Closed",
-  "Reopened",
-  "Cancelled",
-];
+export const STATUS_TRANSITIONS: Record<string, string[]> = {
+  New: ["Open", "In Progress", "Cancelled"],
+  Open: ["In Progress", "Waiting for Requester", "Resolved", "Cancelled"],
+  "In Progress": ["Waiting for Requester", "Resolved", "Cancelled"],
+  "Waiting for Requester": ["In Progress", "Resolved", "Cancelled"],
+  Resolved: ["Closed", "Reopened"],
+  Closed: ["Reopened"],
+  Reopened: ["In Progress", "Resolved", "Cancelled"],
+  Cancelled: [],
+};
 
 const PRIORITY_OPTIONS = ["LOW", "MEDIUM", "HIGH"];
 
@@ -140,10 +140,13 @@ export default function StaffTicketDetail({ ticketId, onBack, currentUserId }: P
     setOpsSuccess(null);
     setOpsError(null);
 
-    const payload: { status?: string; itPriority?: string; ownerId?: number | null } = {};
+    const payload: { status?: string; itPriority?: string; ownerId?: number | null; clientUpdatedAt?: string } = {};
     if (status) payload.status = status;
     if (itPriority) payload.itPriority = itPriority;
     payload.ownerId = ownerId ? parseInt(ownerId) : null;
+    if (ticket?.updatedAt) {
+      payload.clientUpdatedAt = ticket.updatedAt;
+    }
 
     try {
       const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}`, {
@@ -155,11 +158,17 @@ export default function StaffTicketDetail({ ticketId, onBack, currentUserId }: P
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          throw new Error(body.error ?? "This ticket has been updated by another user. Please refresh the page to view the latest status.");
+        }
         throw new Error(body.error ?? "Failed to update ticket");
       }
 
       const updatedTicket = await res.json();
       setTicket((prev) => (prev ? { ...prev, ...updatedTicket } : prev));
+      if (updatedTicket.currentStatus) setStatus(updatedTicket.currentStatus);
+      if (updatedTicket.itPriority) setItPriority(updatedTicket.itPriority);
+      if (updatedTicket.owner) setOwnerId(String(updatedTicket.owner.id));
       setOpsSuccess("Ticket updated successfully.");
       setTimeout(() => setOpsSuccess(null), 4000);
     } catch (err) {
@@ -523,19 +532,35 @@ export default function StaffTicketDetail({ ticketId, onBack, currentUserId }: P
                 <label htmlFor="staff-status-select" style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.3rem" }}>
                   Status
                 </label>
-                <select
-                  id="staff-status-select"
-                  aria-label="Status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  style={{ width: "100%", height: "38px", padding: "0.4rem 0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-neutral)", fontSize: "0.9rem" }}
-                >
-                  {STATUS_OPTIONS.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
+                {(() => {
+                  const permitted = ticket ? [ticket.currentStatus, ...(STATUS_TRANSITIONS[ticket.currentStatus] || [])] : [];
+                  const availableOptions = Array.from(new Set(permitted));
+                  const isTerminal = ticket?.currentStatus === "Cancelled";
+
+                  return (
+                    <>
+                      <select
+                        id="staff-status-select"
+                        aria-label="Status"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        disabled={isTerminal || availableOptions.length <= 1}
+                        style={{ width: "100%", height: "38px", padding: "0.4rem 0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-neutral)", fontSize: "0.9rem" }}
+                      >
+                        {availableOptions.map((st) => (
+                          <option key={st} value={st}>
+                            {st} {st === ticket?.currentStatus ? "(Current)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      {isTerminal && (
+                        <small style={{ color: "var(--color-text-secondary)", fontSize: "0.75rem", display: "block", marginTop: "0.25rem" }}>
+                          Ticket is Cancelled (terminal state, no further transitions).
+                        </small>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* IT Priority */}

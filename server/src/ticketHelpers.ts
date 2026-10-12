@@ -107,3 +107,28 @@ export function validateTicketFields(body: {
 
   return errors;
 }
+
+/**
+ * Permitted status transitions matrix (BR-06).
+ */
+export const STATUS_TRANSITIONS: Record<string, string[]> = {
+  New: ["Open", "In Progress", "Cancelled"],
+  Open: ["In Progress", "Waiting for Requester", "Resolved", "Cancelled"],
+  "In Progress": ["Waiting for Requester", "Resolved", "Cancelled"],
+  "Waiting for Requester": ["In Progress", "Resolved", "Cancelled"],
+  Resolved: ["Closed", "Reopened"],
+  Closed: ["Reopened"],
+  Reopened: ["In Progress", "Resolved", "Cancelled"],
+  Cancelled: [], // Terminal state
+};
+
+export function getPermittedStatusTransitions(currentStatus: string): string[] {
+  return STATUS_TRANSITIONS[currentStatus] || [];
+}
+
+export function isValidStatusTransition(fromStatus: string, toStatus: string): boolean {
+  if (fromStatus === toStatus) return true;
+  const permitted = STATUS_TRANSITIONS[fromStatus] || [];
+  return permitted.includes(toStatus);
+}
+
