@@ -347,6 +347,64 @@ app.get("/api/tickets/:id/actions-taken", requireAuth, async (req: Request, res:
   }
 });
 
+// ---------------------------------------------------------------------------
+// Lab 4 — Requester Dashboard (FR-09 / AC-09 / BR-09)
+// GET /api/requester/dashboard
+// ---------------------------------------------------------------------------
+app.get("/api/requester/dashboard", requireAuth, async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const prisma = getPrisma();
+
+  try {
+    const [totalOpen, waitingForRequester, recentlyResolved, totalClosed, recentTickets] = await Promise.all([
+      // totalOpen: New, Open, In Progress, Waiting for Requester
+      prisma.ticket.count({
+        where: {
+          requesterId: userId,
+          currentStatus: { in: ["New", "Open", "In Progress", "Waiting for Requester"] },
+        },
+      }),
+      // waitingForRequester
+      prisma.ticket.count({
+        where: { requesterId: userId, currentStatus: "Waiting for Requester" },
+      }),
+      // recentlyResolved
+      prisma.ticket.count({
+        where: { requesterId: userId, currentStatus: "Resolved" },
+      }),
+      // totalClosed: Closed or Cancelled
+      prisma.ticket.count({
+        where: {
+          requesterId: userId,
+          currentStatus: { in: ["Closed", "Cancelled"] },
+        },
+      }),
+      // recentTickets: up to 5, most recently updated
+      prisma.ticket.findMany({
+        where: { requesterId: userId },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          ticketNumber: true,
+          summary: true,
+          requestedPriority: true,
+          currentStatus: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    res.status(200).json({
+      metrics: { totalOpen, waitingForRequester, recentlyResolved, totalClosed },
+      recentTickets,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch requester dashboard" });
+  }
+});
+
 app.post("/api/tickets/:id/public-comments", requireAuth, async (req: Request, res: Response) => {
   const requesterId = req.user!.id;
   const ticketId = parseInt(req.params.id);
