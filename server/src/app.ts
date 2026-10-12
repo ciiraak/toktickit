@@ -285,6 +285,10 @@ app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => 
           include: { author: { select: { id: true, name: true, role: true } } },
           orderBy: { createdAt: "asc" },
         },
+        actionsTaken: {
+          include: { performedBy: { select: { id: true, name: true, role: true } } },
+          orderBy: { actionDateTime: "asc" },
+        },
       },
     });
 
@@ -301,6 +305,45 @@ app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => 
     res.status(200).json(ticket);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch ticket detail" });
+  }
+});
+
+app.get("/api/tickets/:id/actions-taken", requireAuth, async (req: Request, res: Response) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, requesterId: true },
+    });
+
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    // Role guard: if requester, must own ticket
+    if (req.user!.role === "REQUESTER" && ticket.requesterId !== req.user!.id) {
+      res.status(403).json({ error: "Access denied: ticket belongs to another requester" });
+      return;
+    }
+
+    const actions = await prisma.actionTaken.findMany({
+      where: { ticketId },
+      orderBy: { actionDateTime: "asc" },
+      include: {
+        performedBy: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(200).json(actions);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch actions taken" });
   }
 });
 

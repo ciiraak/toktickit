@@ -9,8 +9,8 @@
 | # | Prompt (summarized) | What I did with the result |
 | :--- | :--- | :--- |
 | 1 | "Read the Lab 4 handout and create the Sprint 4 Engineering Contract specification, API spec, UI spec, and test plan following the existing project structure." | Reviewed and verified all functional requirements (Actions Taken, Ticket lifecycle status transitions, role dashboards), business rules BR-01 through BR-12, and traceability mapping. |
-| 2 | "Design and apply the Prisma schema migration for ActionTaken and update the seed data with realistic tickets across all 8 statuses." | *To be documented during Phase 2 implementation.* |
-| 3 | "Implement the Actions Taken REST APIs with server-side actor attribution and role guards." | *To be documented during Phase 2 implementation.* |
+| 2 | "Design and apply the Prisma schema migration for ActionTaken and update the seed data with realistic tickets across all 8 statuses." | Created migration `20261012104645_add_actions_taken` adding `ActionTaken` model, and updated `seed.ts` with idempotent test data across all 8 ticket statuses, assignees, and actions. |
+| 3 | "Implement the Actions Taken REST APIs with server-side actor attribution and role guards." | Implemented `POST /api/staff/tickets/:id/actions-taken`, `PATCH /api/staff/tickets/:id/actions-taken/:actionId`, and `GET /api/tickets/:id/actions-taken` with strict RBAC guards, automatic `performedById` attribution, and follow-up note validation. Created test suite `server/tests/lab-04/actions-taken.api.test.ts`. |
 | 4 | "Implement the ticket status transition matrix and stale-update concurrency check on the backend." | *To be documented during Phase 3 implementation.* |
 | 5 | "Create the Requester and IT Staff dashboard API endpoints with accurate metric aggregation." | *To be documented during Phase 4 implementation.* |
 | 6 | "Build the IT Staff and Requester dashboard UI components under the Zen Green design system." | *To be documented during Phase 4 implementation.* |
