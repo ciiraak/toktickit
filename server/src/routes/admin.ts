@@ -34,7 +34,7 @@ router.get("/users", async (req: Request, res: Response) => {
     }
 
     if (isActive !== undefined && isActive !== "") {
-      where.isActive = isActive === "true" || isActive === true;
+      where.isActive = String(isActive) === "true";
     }
 
     if (search && typeof search === "string" && search.trim()) {

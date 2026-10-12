@@ -125,6 +125,10 @@ router.get("/tickets/:id", async (req: Request, res: Response) => {
           include: { author: { select: { id: true, name: true, role: true } } },
           orderBy: { createdAt: "asc" },
         },
+        actionsTaken: {
+          include: { performedBy: { select: { id: true, name: true, role: true } } },
+          orderBy: { actionDateTime: "asc" },
+        },
       },
     });
 
@@ -291,6 +295,192 @@ router.post("/tickets/:id/public-comments", async (req: Request, res: Response) 
     res.status(201).json(comment);
   } catch (error) {
     res.status(500).json({ error: "Failed to create comment" });
+  }
+});
+
+// GET /api/staff/tickets/:id/actions-taken — list actions taken for a ticket
+router.get("/tickets/:id/actions-taken", async (req: Request, res: Response) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const actions = await prisma.actionTaken.findMany({
+      where: { ticketId },
+      orderBy: { actionDateTime: "asc" },
+      include: {
+        performedBy: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(200).json(actions);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch actions taken" });
+  }
+});
+
+// POST /api/staff/tickets/:id/actions-taken — create an action taken
+router.post("/tickets/:id/actions-taken", async (req: Request, res: Response) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const description = typeof req.body.description === "string" ? req.body.description.trim() : "";
+  const result = typeof req.body.result === "string" ? req.body.result.trim() : "";
+  const followUpRequired = Boolean(req.body.followUpRequired);
+  const followUpNote = typeof req.body.followUpNote === "string" ? req.body.followUpNote.trim() : null;
+  const attachmentNotes = typeof req.body.attachmentNotes === "string" ? req.body.attachmentNotes.trim() : null;
+
+  let actionDateTime = new Date();
+  if (req.body.actionDateTime) {
+    const parsedDate = new Date(req.body.actionDateTime);
+    if (!isNaN(parsedDate.getTime())) {
+      actionDateTime = parsedDate;
+    }
+  }
+
+  if (!description) {
+    res.status(400).json({ error: "Action description is required and cannot be empty." });
+    return;
+  }
+
+  if (!result) {
+    res.status(400).json({ error: "Action result is required and cannot be empty." });
+    return;
+  }
+
+  if (followUpRequired && !followUpNote) {
+    res.status(400).json({ error: "Follow-up note is required when follow-up is needed." });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const action = await prisma.actionTaken.create({
+      data: {
+        ticketId,
+        actionDateTime,
+        description,
+        result,
+        performedById: req.user!.id,
+        followUpRequired,
+        followUpNote: followUpRequired ? followUpNote : null,
+        attachmentNotes: attachmentNotes || null,
+      },
+      include: {
+        performedBy: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(201).json(action);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create action taken" });
+  }
+});
+
+// PATCH /api/staff/tickets/:id/actions-taken/:actionId — update an action taken
+router.patch("/tickets/:id/actions-taken/:actionId", async (req: Request, res: Response) => {
+  const ticketId = parseInt(req.params.id);
+  const actionId = parseInt(req.params.actionId);
+  if (isNaN(ticketId) || isNaN(actionId)) {
+    res.status(404).json({ error: "Action taken not found" });
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const existingAction = await prisma.actionTaken.findFirst({
+      where: { id: actionId, ticketId },
+    });
+
+    if (!existingAction) {
+      res.status(404).json({ error: "Action taken not found" });
+      return;
+    }
+
+    const updates: any = {};
+    if (req.body.description !== undefined) {
+      const desc = typeof req.body.description === "string" ? req.body.description.trim() : "";
+      if (!desc) {
+        res.status(400).json({ error: "Action description cannot be empty." });
+        return;
+      }
+      updates.description = desc;
+    }
+
+    if (req.body.result !== undefined) {
+      const resText = typeof req.body.result === "string" ? req.body.result.trim() : "";
+      if (!resText) {
+        res.status(400).json({ error: "Action result cannot be empty." });
+        return;
+      }
+      updates.result = resText;
+    }
+
+    if (req.body.followUpRequired !== undefined) {
+      updates.followUpRequired = Boolean(req.body.followUpRequired);
+    }
+
+    const finalFollowUpRequired = updates.followUpRequired !== undefined 
+      ? updates.followUpRequired 
+      : existingAction.followUpRequired;
+
+    if (req.body.followUpNote !== undefined) {
+      const note = typeof req.body.followUpNote === "string" ? req.body.followUpNote.trim() : null;
+      updates.followUpNote = note;
+    }
+
+    if (finalFollowUpRequired) {
+      const noteToCheck = updates.followUpNote !== undefined ? updates.followUpNote : existingAction.followUpNote;
+      if (!noteToCheck) {
+        res.status(400).json({ error: "Follow-up note is required when follow-up is needed." });
+        return;
+      }
+    } else {
+      if (updates.followUpRequired === false) {
+        updates.followUpNote = null;
+      }
+    }
+
+    if (req.body.attachmentNotes !== undefined) {
+      updates.attachmentNotes = typeof req.body.attachmentNotes === "string" ? req.body.attachmentNotes.trim() : null;
+    }
+
+    if (req.body.actionDateTime !== undefined) {
+      const parsedDate = new Date(req.body.actionDateTime);
+      if (!isNaN(parsedDate.getTime())) {
+        updates.actionDateTime = parsedDate;
+      }
+    }
+
+    const updated = await prisma.actionTaken.update({
+      where: { id: actionId },
+      data: updates,
+      include: {
+        performedBy: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    res.status(200).json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update action taken" });
   }
 });
 
