@@ -146,7 +146,7 @@ Updates ticket operational fields, enforces permitted status transitions, and de
     ```
     *Validation & Workflow Rules*:
     *   `currentStatus`: If provided, the transition from current ticket status must be permitted by the transition matrix:
-        *   `New` → `Open`, `Cancelled`
+        *   `New` → `Open`, `In Progress`, `Cancelled`
         *   `Open` → `In Progress`, `Waiting for Requester`, `Resolved`, `Cancelled`
         *   `In Progress` → `Waiting for Requester`, `Resolved`, `Cancelled`
         *   `Waiting for Requester` → `In Progress`, `Resolved`, `Cancelled`

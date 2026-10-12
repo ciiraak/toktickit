@@ -68,7 +68,7 @@ The stakeholder requires a structured way to plan, track, and record concrete op
     *   `GET /api/tickets/:id/actions-taken`: Requesters can only access Actions Taken for tickets where `ticket.requesterId == authenticatedUser.id`. Accessing other tickets returns HTTP `403 Forbidden`.
 *   **BR-06 (Permitted Ticket Status Transition Matrix)**:
     Only the following status transitions are allowed:
-    *   `New` → `Open`, `Cancelled`
+    *   `New` → `Open`, `In Progress`, `Cancelled`
     *   `Open` → `In Progress`, `Waiting for Requester`, `Resolved`, `Cancelled`
     *   `In Progress` → `Waiting for Requester`, `Resolved`, `Cancelled`
     *   `Waiting for Requester` → `In Progress`, `Resolved`, `Cancelled`

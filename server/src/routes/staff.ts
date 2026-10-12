@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { getPrisma } from "../prisma.js";
 import { requireAuth, requireRole } from "../authMiddleware.js";
+import { isValidStatusTransition, STATUS_TRANSITIONS } from "../ticketHelpers.js";
 
 const router = Router();
 
@@ -157,49 +158,75 @@ router.patch("/tickets/:id", async (req: Request, res: Response) => {
     return;
   }
 
-  const { ownerId, itPriority, status } = req.body;
-  const updates: any = {};
-
-  if (ownerId !== undefined) {
-    if (ownerId === null) {
-      updates.ownerId = null;
-    } else {
-      const prisma = getPrisma();
-      const owner = await prisma.user.findUnique({ where: { id: Number(ownerId) } });
-      if (!owner || !owner.isActive || (owner.role !== "IT_STAFF" && owner.role !== "ADMINISTRATOR")) {
-        res.status(400).json({ error: "Invalid owner: must be an active IT Staff or Administrator." });
-        return;
-      }
-      updates.ownerId = Number(ownerId);
-    }
-  }
-
-  if (itPriority !== undefined) {
-    if (!VALID_PRIORITIES.includes(itPriority)) {
-      res.status(400).json({ error: `Invalid itPriority. Must be one of: ${VALID_PRIORITIES.join(", ")}` });
-      return;
-    }
-    updates.itPriority = itPriority;
-  }
-
-  if (status !== undefined) {
-    if (!VALID_STATUSES.includes(status)) {
-      res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` });
-      return;
-    }
-    updates.currentStatus = status;
-  }
-
-  if (Object.keys(updates).length === 0) {
-    res.status(400).json({ error: "No valid fields provided to update." });
-    return;
-  }
-
   try {
     const prisma = getPrisma();
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) {
       res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    // Concurrency / Stale-update check (BR-08)
+    const clientUpdatedAt = req.body.clientUpdatedAt || req.body.updatedAt;
+    if (clientUpdatedAt !== undefined && clientUpdatedAt !== null) {
+      const clientTime = new Date(clientUpdatedAt).getTime();
+      const serverTime = ticket.updatedAt.getTime();
+      if (Math.abs(serverTime - clientTime) > 1000) {
+        res.status(409).json({
+          error: "Conflict: This ticket has been updated by another user. Please refresh to view the latest state.",
+          currentStatus: ticket.currentStatus,
+          updatedAt: ticket.updatedAt,
+        });
+        return;
+      }
+    }
+
+    const { ownerId, itPriority } = req.body;
+    const targetStatus = req.body.status !== undefined ? req.body.status : req.body.currentStatus;
+    const updates: any = {};
+
+    if (ownerId !== undefined) {
+      if (ownerId === null || ownerId === "") {
+        updates.ownerId = null;
+      } else {
+        const owner = await prisma.user.findUnique({ where: { id: Number(ownerId) } });
+        if (!owner || !owner.isActive || (owner.role !== "IT_STAFF" && owner.role !== "ADMINISTRATOR")) {
+          res.status(400).json({ error: "Invalid owner: must be an active IT Staff or Administrator." });
+          return;
+        }
+        updates.ownerId = Number(ownerId);
+      }
+    }
+
+    if (itPriority !== undefined) {
+      if (!VALID_PRIORITIES.includes(itPriority)) {
+        res.status(400).json({ error: `Invalid itPriority. Must be one of: ${VALID_PRIORITIES.join(", ")}` });
+        return;
+      }
+      updates.itPriority = itPriority;
+    }
+
+    if (targetStatus !== undefined) {
+      if (!VALID_STATUSES.includes(targetStatus)) {
+        res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` });
+        return;
+      }
+
+      // Check status transition matrix (BR-06)
+      if (!isValidStatusTransition(ticket.currentStatus, targetStatus)) {
+        const permitted = STATUS_TRANSITIONS[ticket.currentStatus] || [];
+        res.status(400).json({
+          error: `Invalid status transition from "${ticket.currentStatus}" to "${targetStatus}". Permitted transitions: ${permitted.length > 0 ? permitted.join(", ") : "None (terminal state)"}`,
+          permittedTransitions: permitted,
+        });
+        return;
+      }
+
+      updates.currentStatus = targetStatus;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "No valid fields provided to update." });
       return;
     }
 
