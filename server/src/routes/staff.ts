@@ -511,6 +511,107 @@ router.patch("/tickets/:id/actions-taken/:actionId", async (req: Request, res: R
   }
 });
 
+// GET /api/staff/dashboard — operational metrics for IT Staff & Administrators (FR-10 / AC-10 / BR-10)
+router.get("/dashboard", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const prisma = getPrisma();
+
+    const activeStatuses = ["New", "Open", "In Progress", "Waiting for Requester", "Resolved", "Reopened"];
+
+    const [newCount, openCount, inProgressCount, waitingCount, myAssignedCount, unassignedCount, urgentTickets, recentTickets] =
+      await Promise.all([
+        prisma.ticket.count({ where: { currentStatus: "New" } }),
+        prisma.ticket.count({ where: { currentStatus: "Open" } }),
+        prisma.ticket.count({ where: { currentStatus: "In Progress" } }),
+        prisma.ticket.count({ where: { currentStatus: "Waiting for Requester" } }),
+        // My Assigned: owned by current user, not Closed or Cancelled
+        prisma.ticket.count({
+          where: { ownerId: userId, currentStatus: { notIn: ["Closed", "Cancelled"] } },
+        }),
+        // Unassigned: no owner, not Closed or Cancelled
+        prisma.ticket.count({
+          where: { ownerId: null, currentStatus: { notIn: ["Closed", "Cancelled"] } },
+        }),
+        // Urgent: itPriority HIGH or requestedPriority HIGH, active status, up to 5 oldest
+        prisma.ticket.findMany({
+          where: {
+            currentStatus: { in: activeStatuses },
+            OR: [{ itPriority: "HIGH" }, { requestedPriority: "HIGH" }],
+          },
+          orderBy: { createdAt: "asc" },
+          take: 5,
+          select: {
+            id: true,
+            ticketNumber: true,
+            summary: true,
+            requestedPriority: true,
+            itPriority: true,
+            currentStatus: true,
+            createdAt: true,
+            updatedAt: true,
+            requester: { select: { name: true } },
+            owner: { select: { name: true } },
+          },
+        }),
+        // Recent: 5 most recently updated
+        prisma.ticket.findMany({
+          orderBy: { updatedAt: "desc" },
+          take: 5,
+          select: {
+            id: true,
+            ticketNumber: true,
+            summary: true,
+            requestedPriority: true,
+            itPriority: true,
+            currentStatus: true,
+            createdAt: true,
+            updatedAt: true,
+            requester: { select: { name: true } },
+            owner: { select: { name: true } },
+          },
+        }),
+      ]);
+
+    res.status(200).json({
+      metrics: {
+        new: newCount,
+        open: openCount,
+        inProgress: inProgressCount,
+        waitingForRequester: waitingCount,
+        myAssigned: myAssignedCount,
+        unassigned: unassignedCount,
+      },
+      urgentTickets: urgentTickets.map((t) => ({
+        id: t.id,
+        ticketNumber: t.ticketNumber,
+        summary: t.summary,
+        requestedPriority: t.requestedPriority,
+        itPriority: t.itPriority,
+        currentStatus: t.currentStatus,
+        requesterName: t.requester.name,
+        ownerName: t.owner?.name ?? null,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      })),
+      recentTickets: recentTickets.map((t) => ({
+        id: t.id,
+        ticketNumber: t.ticketNumber,
+        summary: t.summary,
+        requestedPriority: t.requestedPriority,
+        itPriority: t.itPriority,
+        currentStatus: t.currentStatus,
+        requesterName: t.requester.name,
+        ownerName: t.owner?.name ?? null,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch staff dashboard" });
+  }
+});
+
 // GET /api/staff/assignees — list active IT staff and administrators for ticket assignment
 router.get("/assignees", async (_req: Request, res: Response) => {
   try {
