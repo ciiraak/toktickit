@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { RequesterProvider, useRequester } from "./context/RequesterContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import RequesterSelector from "./components/RequesterSelector";
@@ -10,15 +10,24 @@ import CreateTicket from "./components/CreateTicket";
 import StaffTicketQueue from "./components/StaffTicketQueue";
 import StaffTicketDetail from "./components/StaffTicketDetail";
 import AdminUserManagement from "./components/AdminUserManagement";
+import RequesterDashboard from "./components/RequesterDashboard";
+import StaffDashboard from "./components/StaffDashboard";
 import { CreatedTicket } from "./api";
 
-type Tab = "my-tickets" | "create-ticket" | "staff-queue" | "admin-users";
+type Tab = "dashboard" | "my-tickets" | "create-ticket" | "staff-queue" | "admin-users";
 
 function AppShell() {
   const { user, loading: authLoading, logout } = useAuth();
   const { requester, clearRequester } = useRequester();
 
-  const [activeTab, setActiveTab] = useState<Tab>("my-tickets");
+  const [activeTab, setActiveTab] = useState<Tab>(user ? "dashboard" : "my-tickets");
+
+  useEffect(() => {
+    if (user) {
+      setActiveTab("dashboard");
+    }
+  }, [user]);
+
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [selectedStaffTicketId, setSelectedStaffTicketId] = useState<number | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
@@ -32,7 +41,7 @@ function AppShell() {
   function handleTicketCreated(ticket: CreatedTicket) {
     setSuccessBanner(`Ticket ${ticket.ticketNumber} created successfully!`);
     setSelectedTicketId(null);
-    setActiveTab("my-tickets");
+    setActiveTab(user ? "dashboard" : "my-tickets");
     setTimeout(() => setSuccessBanner(null), 6000);
   }
 
@@ -71,7 +80,7 @@ function AppShell() {
               className={`btn ${authMode === "requester" ? "btn-success" : "btn-outline-secondary"}`}
               onClick={() => setAuthMode("requester")}
             >
-              Dev Requester (Lab 2)
+              Dev Requester (Lab 4)
             </button>
           </div>
         </div>
@@ -112,7 +121,7 @@ function AppShell() {
             onClick={() => {
               setSelectedTicketId(null);
               setSelectedStaffTicketId(null);
-              setActiveTab("my-tickets");
+              setActiveTab(user ? "dashboard" : "my-tickets");
             }}
           >
             <svg
@@ -132,6 +141,27 @@ function AppShell() {
 
           <nav>
             <ul className="nav-tabs-custom">
+              {/* Dashboard — all authenticated roles */}
+              <li>
+                <button
+                  type="button"
+                  className={`nav-tab-item border-0 bg-transparent ${activeTab === "dashboard" ? "active" : ""}`}
+                  onClick={() => {
+                    setSelectedTicketId(null);
+                    setSelectedStaffTicketId(null);
+                    setActiveTab("dashboard");
+                  }}
+                  data-testid="nav-dashboard"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                  Dashboard
+                </button>
+              </li>
               <li>
                 <button
                   type="button"
@@ -259,6 +289,41 @@ function AppShell() {
 
       {/* Main Content Area */}
       <main className="container-fluid py-4 px-3 px-md-5 flex-grow-1">
+        {/* Dashboard — role-appropriate view */}
+        {activeTab === "dashboard" && (
+          isStaffOrAdmin ? (
+            <StaffDashboard
+              onCreateTicketClick={() => {
+                setSelectedStaffTicketId(null);
+                setActiveTab("create-ticket");
+              }}
+              onViewQueue={() => {
+                setSelectedStaffTicketId(null);
+                setActiveTab("staff-queue");
+              }}
+              onSelectTicket={(id) => {
+                setSelectedStaffTicketId(id);
+                setActiveTab("staff-queue");
+              }}
+            />
+          ) : (
+            <RequesterDashboard
+              onCreateTicketClick={() => {
+                setSelectedTicketId(null);
+                setActiveTab("create-ticket");
+              }}
+              onViewMyTickets={() => {
+                setSelectedTicketId(null);
+                setActiveTab("my-tickets");
+              }}
+              onSelectTicket={(id) => {
+                setSelectedTicketId(id);
+                setActiveTab("my-tickets");
+              }}
+            />
+          )
+        )}
+
         {activeTab === "my-tickets" && (
           selectedTicketId ? (
             <RequesterTicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />

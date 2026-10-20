@@ -20,7 +20,7 @@ test.describe("E2E-03: IT Staff Ticket Flow", () => {
     await staffQueueNav.click();
 
     // Verify queue table / list loads
-    const queueHeader = page.locator("h2:has-text('IT Staff Ticket Queue')");
+    const queueHeader = page.locator("h2:has-text('Ticket Queue')");
     await expect(queueHeader).toBeVisible({ timeout: 10000 });
 
     // Open first available ticket in queue

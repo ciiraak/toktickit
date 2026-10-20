@@ -29,7 +29,7 @@ test.describe("E2E-01: Authentication Flow", () => {
     await logout(page);
 
     // Verify redirected back to login screen
-    await expect(page.locator("[data-testid='login-form'], #email-input")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("[data-testid='login-form']")).toBeVisible({ timeout: 10000 });
   });
 
   test("logs in as Administrator and sees User Management navigation", async ({ page }) => {
