@@ -462,7 +462,10 @@ export default function ActionsTakenSection({ ticketId, readOnly = false }: Prop
       )}
 
       {!loading && actions.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div
+          data-testid="actions-taken-list"
+          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+        >
           {actions.map((action) => {
             const isEditing = editingActionId === action.id;
 

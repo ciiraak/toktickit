@@ -19,4 +19,6 @@ uploads/*
 !uploads/.gitkeep
 client/src/**/*.js
 client/src/*.js
-
+# test artifacts
+test-results/
+playwright-report/

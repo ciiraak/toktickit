@@ -13,7 +13,7 @@ export async function loginAs(page: Page, email: string, password = "Password123
   await navigateToLogin(page);
   await page.locator("#email-input").fill(email);
   await page.locator("#password-input").fill(password);
-  await page.click("button[data-testid='login-submit-button'], button:has-text('Sign In')");
+  await page.locator("[data-testid='login-submit-button']").click();
 }
 
 export async function logout(page: Page) {

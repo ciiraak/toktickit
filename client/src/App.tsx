@@ -80,7 +80,7 @@ function AppShell() {
               className={`btn ${authMode === "requester" ? "btn-success" : "btn-outline-secondary"}`}
               onClick={() => setAuthMode("requester")}
             >
-              Dev Requester (Lab 2)
+              Dev Requester (Lab 4)
             </button>
           </div>
         </div>
