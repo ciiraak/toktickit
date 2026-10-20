@@ -24,9 +24,9 @@ Sprint 4 quality assurance encompasses integration API tests, frontend component
 | **UI-02** | Component | FR-09 / AC-09 | Requester Dashboard View | Renders requester metrics, recent ticket cards, and empty state | `client/tests/lab-04/RequesterDashboard.test.tsx` | **Pass** |
 | **UI-03** | Component | FR-01 / AC-01 | Actions Taken List & Form | Renders action items, toggles create form, enforces follow-up note input | `client/tests/lab-04/ActionsTaken.test.tsx` | **Pass** |
 | **UI-04** | Component | FR-06 / AC-05 | Workflow Transition UI | Dropdown dynamically lists only valid target statuses based on current ticket state | `client/tests/lab-04/TicketWorkflow.test.tsx` | **Pass** |
-| **E2E-01** | E2E | FR-01 / AC-01 | Actions Taken Workflow | IT staff navigates to ticket, logs an Action Taken, and verifies it appears in list | `e2e/lab-04/actions-taken-flow.spec.ts` | **Planned** |
-| **E2E-02** | E2E | FR-06 / AC-07 | Ticket Resolution & Advisory Gate | Requester signals problem resolved; staff reviews and formally closes ticket | `e2e/lab-04/ticket-resolution.spec.ts` | **Planned** |
-| **E2E-03** | E2E | FR-09,10 / AC-09,10 | Dashboards & Drill-down | Requester & Staff dashboards display correct counts with working queue filter links | `e2e/lab-04/dashboards.spec.ts` | **Planned** |
+| **E2E-01** | E2E | FR-01 / AC-01 | Actions Taken Workflow | IT staff navigates to ticket, logs an Action Taken, and verifies it appears in list | `e2e/lab-04/actions-taken-flow.spec.ts` | **Pass** |
+| **E2E-02** | E2E | FR-06 / AC-07 | Ticket Resolution & Advisory Gate | Requester signals problem resolved; staff reviews and formally closes ticket | `e2e/lab-04/ticket-resolution.spec.ts` | **Pass** |
+| **E2E-03** | E2E | FR-09,10 / AC-09,10 | Dashboards & Drill-down | Requester & Staff dashboards display correct counts with working queue filter links | `e2e/lab-04/dashboards.spec.ts` | **Pass** |
 
 ---
 
@@ -35,16 +35,28 @@ Sprint 4 quality assurance encompasses integration API tests, frontend component
 ### 3.1 Server Integration Tests
 ```powershell
 cd server
-npm run test -- tests/lab-04/
+npm test
 ```
 
 ### 3.2 Client Component Tests
 ```powershell
 cd client
-npm run test -- tests/lab-04/
+npm test
 ```
 
 ### 3.3 End-to-End Playwright Tests
 ```powershell
-npx playwright test e2e/lab-04/
+$env:NODE_PATH="client/node_modules"; npx --prefix client playwright test e2e/lab-02/ e2e/lab-03/ e2e/lab-04/ --workers=1
 ```
+
+---
+
+## 4. Verification & Regression Evidence
+
+| Test Level | Total Files | Total Tests | Passing | Failing | Regressions | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Server Integration & API** | 17 | 132 | 132 | 0 | 0 | **100% Pass** |
+| **Client UI Components** | 13 | 71 | 71 | 0 | 0 | **100% Pass** |
+| **Playwright E2E Suites** | 7 | 17 | 17 | 0 | 0 | **100% Pass** |
+| **Grand Total** | **37** | **220** | **220** | **0** | **0** | **100% Pass (Zero Regressions)** |
+

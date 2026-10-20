@@ -42,7 +42,7 @@ test.describe("E2E-04: Administrator User Management Flow", () => {
 
     // Filter by Role
     await page.locator("[data-testid='role-filter-select']").selectOption("IT_STAFF");
-    await expect(page.locator("text=IT Staff")).toBeVisible({ timeout: 8000 });
+    await expect(page.locator("tbody tr").getByText("IT Staff").first()).toBeVisible({ timeout: 8000 });
 
     await logout(page);
   });

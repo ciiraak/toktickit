@@ -68,14 +68,20 @@ async function main() {
   for (const user of users) {
     const u = await prisma.user.upsert({
       where: { email: user.email },
-      update: { name: user.name, isActive: user.isActive, role: user.role },
+      update: {
+        name: user.name,
+        isActive: user.isActive,
+        role: user.role,
+        passwordHash,
+        requiresPasswordChange: false,
+      },
       create: {
         name: user.name,
         email: user.email,
         isActive: user.isActive,
         role: user.role,
         passwordHash,
-        requiresPasswordChange: true,
+        requiresPasswordChange: false,
       },
     });
     userMap.set(user.email, u.id);
