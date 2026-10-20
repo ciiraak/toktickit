@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ActionsTakenSection from "./ActionsTakenSection";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -504,6 +505,9 @@ export default function StaffTicketDetail({ ticketId, onBack, currentUserId }: P
               </button>
             </form>
           </div>
+
+          {/* Actions Taken Section */}
+          <ActionsTakenSection ticketId={ticket.id} />
         </div>
 
         {/* Right Column: Operations Sidebar & Metadata */}

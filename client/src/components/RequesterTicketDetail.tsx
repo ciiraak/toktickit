@@ -10,6 +10,7 @@ import {
   TicketDetail,
   AttachmentDetail,
 } from "../api";
+import ActionsTakenSection from "./ActionsTakenSection";
 
 interface Props {
   ticketId: number;
@@ -517,6 +518,9 @@ export default function RequesterTicketDetail({ ticketId, onBack }: Props) {
           </div>
         </form>
       </div>
+
+      {/* Read-Only Actions Taken Section (Lab 4) */}
+      <ActionsTakenSection ticketId={ticket.id} readOnly={true} />
 
       {/* Soft Removal Reason Modal */}
       {removingAttachment && (

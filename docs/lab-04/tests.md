@@ -22,7 +22,7 @@ Sprint 4 quality assurance encompasses integration API tests, frontend component
 | **API-11** | API | FR-10 / AC-10 | Staff Dashboard Metrics | Returns system-wide queue metrics, unassigned count, and user-assigned count | `server/tests/lab-04/staff-dashboard.api.test.ts` | **Pass** |
 | **UI-01** | Component | FR-10 / AC-10 | IT Staff Dashboard View | Renders operational metric cards, recent tickets, and drill-down links | `client/tests/lab-04/StaffDashboard.test.tsx` | **Pass** |
 | **UI-02** | Component | FR-09 / AC-09 | Requester Dashboard View | Renders requester metrics, recent ticket cards, and empty state | `client/tests/lab-04/RequesterDashboard.test.tsx` | **Pass** |
-| **UI-03** | Component | FR-01 / AC-01 | Actions Taken List & Form | Renders action items, toggles create form, enforces follow-up note input | `client/tests/lab-04/ActionsTaken.test.tsx` | **Planned** |
+| **UI-03** | Component | FR-01 / AC-01 | Actions Taken List & Form | Renders action items, toggles create form, enforces follow-up note input | `client/tests/lab-04/ActionsTaken.test.tsx` | **Pass** |
 | **UI-04** | Component | FR-06 / AC-05 | Workflow Transition UI | Dropdown dynamically lists only valid target statuses based on current ticket state | `client/tests/lab-04/TicketWorkflow.test.tsx` | **Pass** |
 | **E2E-01** | E2E | FR-01 / AC-01 | Actions Taken Workflow | IT staff navigates to ticket, logs an Action Taken, and verifies it appears in list | `e2e/lab-04/actions-taken-flow.spec.ts` | **Planned** |
 | **E2E-02** | E2E | FR-06 / AC-07 | Ticket Resolution & Advisory Gate | Requester signals problem resolved; staff reviews and formally closes ticket | `e2e/lab-04/ticket-resolution.spec.ts` | **Planned** |
